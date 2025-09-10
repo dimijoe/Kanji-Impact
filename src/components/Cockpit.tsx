@@ -218,37 +218,58 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
           }}
         />
       )}
-      <div style={{
-        position:"absolute",top:22,right:32,zIndex:125,display:"flex",gap:11
-      }}>
-        <button onClick={handlePauseToggle} style={btnStyle}>
+      
+      {/* Score et temps - Responsive */}
+      <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-30">
+        <div className="bg-black/50 rounded-lg px-3 py-2 text-white">
+          <div className="text-xs sm:text-sm text-gray-300">Score</div>
+          <div className="text-lg sm:text-xl font-bold text-sky-400">{score}</div>
+        </div>
+        <div className="bg-black/50 rounded-lg px-3 py-2 text-white">
+          <div className="text-xs sm:text-sm text-gray-300">Temps</div>
+          <div className="text-lg sm:text-xl font-bold text-orange-400">{timeLeft}s</div>
+        </div>
+      </div>
+
+      {/* Boutons de contrôle - Responsive */}
+      <div className="absolute top-2 right-2 z-30 flex gap-2">
+        <button 
+          onClick={handlePauseToggle} 
+          className="bg-blue-600/80 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors touch-manipulation"
+        >
           {isPaused ? "▶" : "⏸"}
         </button>
-        <button onClick={onMenu} style={btnStyle}>Menu</button>
+        <button 
+          onClick={onMenu} 
+          className="bg-gray-600/80 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors touch-manipulation"
+        >
+          Menu
+        </button>
       </div>
+
       {isPaused && (
-        <div style={{
-          position:"absolute",zIndex:222,
-          left:0,top:0,width:"100vw",height:"100vh",
-          background: "rgba(12,19,33,0.74)",display:"flex",alignItems:"center",justifyContent:"center"
-        }}>
-          <div style={{
-            background: "linear-gradient(180deg,#1a3755e9,#091420e9 90%)",
-            padding:"45px 65px",borderRadius:32,display:"flex",flexDirection:"column",alignItems:"center",gap:28,boxShadow:"0 0 33px #167af599"
-          }}>
-            <span style={{fontSize:"2.3rem",color:"#38eeff",fontWeight:"bold"}}>PAUSE</span>
-            <button onClick={()=>setIsPaused(false)}
-              style={{...btnStyle,minWidth:"110px",padding:"13px 24px",fontWeight:900,fontSize:"1.32rem",background:"#12bdcb"}}>
-              Reprendre
-            </button>
-            <button onClick={onMenu}
-              style={{...btnStyle,minWidth:"110px",padding:"11px 20px",fontSize:"1.06rem",background:"#2a3a56"}}>
-              Retour menu
-            </button>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800/95 rounded-2xl p-6 w-full max-w-sm text-center">
+            <h2 className="text-2xl font-bold text-sky-400 mb-6">PAUSE</h2>
+            <div className="space-y-4">
+              <button 
+                onClick={() => setIsPaused(false)}
+                className="w-full bg-sky-500 hover:bg-sky-600 text-white py-3 rounded-lg font-bold text-lg transition-colors touch-manipulation"
+              >
+                Reprendre
+              </button>
+              <button 
+                onClick={onMenu}
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-bold transition-colors touch-manipulation"
+              >
+                Retour menu
+              </button>
+            </div>
           </div>
         </div>
       )}
-      {/* ... Étoiles, score, countdown, cockpit, laser ... */}
+
+      {/* Kanji animé - Taille responsive */}
       {currentKanji && (
         <div
           style={{
@@ -272,17 +293,14 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
           }}
         >
           <span
+            className="text-6xl sm:text-7xl md:text-8xl font-black text-white"
             style={{
-              fontSize: "8vw",
-              color: "#fff",
               textShadow: [
                 "0 0 44px #26f8e9",
                 "0 0 7vw #12f2ea88",
                 "0 0 5px #fff",
                 "2px 2px 4px #152e58bb"
               ].join(","),
-              fontWeight: 900,
-              fontFamily: "Arial Black, sans-serif",
               letterSpacing: "2.2px"
             }}
           >
@@ -293,85 +311,60 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
           )}
         </div>
       )}
+
       {showLaser && (
         <Laser
           target={kanjiPos}
           direction={laserDirection}
         />
       )}
+
       <CockpitDashboard
         kanjiExplode={kanjiExplode}
         screenShake={screenShake}
       />
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          position: "absolute",
-          left: "50%",
-          bottom: "17vh",
-          transform: "translateX(-50%)",
-          width: "28vw",
-          minWidth: 260,
-          maxWidth: 435,
-          background: "rgba(16,27,44,0.94)",
-          borderRadius: 15,
-          padding: "12px 18px",
-          display: "flex",
-          boxShadow: "0 0 18px #0bfaff44",
-          zIndex: 40,
-          border: "2.6px solid #39e6ff",
-          transition: "box-shadow 0.15s"
-        }}
-        autoComplete="off"
-        tabIndex={-1}
-        onClick={() => inputRef.current?.focus()}
-      >
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          style={{
-            flex: 1,
-            background: "rgba(28,39,92,1)",
-            color: "#b5fafd",
-            border: "none",
-            outline: "none",
-            padding: "14px",
-            fontSize: "1.33rem",
-            borderRadius: 11,
-            fontWeight: 600,
-            fontFamily: "monospace"
-          }}
-          autoFocus
-          placeholder={
-            !kanjiExplode && !isPaused
-              ? "Écris la réponse puis entrée/espace pour tirer"
-              : "En attente…"
-          }
-          disabled={kanjiExplode || isPaused}
-        />
-        <button
-          type="submit"
-          disabled={kanjiExplode || isPaused}
-          style={{
-            marginLeft: 14,
-            padding: "13px 20px",
-            fontWeight: "bold",
-            background: "linear-gradient(90deg,#15eaff 20%,#28a0ff 110%)",
-            border: "none",
-            borderRadius: 10,
-            color: "#fff",
-            fontSize: "1.09rem",
-            boxShadow: "0 0 11px #11e3f9cc",
-            cursor: kanjiExplode || isPaused ? "wait" : "pointer",
-            opacity: kanjiExplode || isPaused ? 0.6 : 1
-          }}
+
+      {/* Interface de saisie - Complètement responsive */}
+      <div className="absolute bottom-4 left-4 right-4 z-40">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-4 border-2 border-sky-400/50 shadow-2xl"
+          autoComplete="off"
         >
-          TIRER
-        </button>
-      </form>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-gray-800 text-white px-4 py-3 rounded-xl border border-gray-600 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 text-lg font-semibold placeholder-gray-400 touch-manipulation"
+              autoFocus
+              placeholder={
+                !kanjiExplode && !isPaused
+                  ? "Écris ta réponse..."
+                  : "En attente…"
+              }
+              disabled={kanjiExplode || isPaused}
+            />
+            <button
+              type="submit"
+              disabled={kanjiExplode || isPaused || !input.trim()}
+              className="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 text-white px-6 py-3 rounded-xl font-bold text-lg transition-all duration-200 shadow-lg disabled:opacity-50 touch-manipulation min-w-[100px]"
+            >
+              TIRER
+            </button>
+          </div>
+          
+          {/* Indicateur de mode de jeu */}
+          <div className="mt-3 text-center">
+            <span className="text-xs text-gray-400 bg-gray-800/50 px-3 py-1 rounded-full">
+              Mode: {gameState.mode === 'onYomi' ? "On'yomi" : gameState.mode === 'kunYomi' ? "Kun'yomi" : "Signification"}
+            </span>
+          </div>
+        </form>
+      </div>
+
       <style>
         {`
         @keyframes screenShake {
@@ -393,21 +386,6 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
     </div>
   );
 }
-const btnStyle: React.CSSProperties = {
-  fontSize:"1.2rem",
-  background: "#116ea9",
-  color:"#fff",
-  border: "none",
-  borderRadius: "11px",
-  padding:"8px 16px",
-  fontWeight:700,
-  cursor:"pointer",
-  boxShadow:"0 0 7px #0efb",
-  outline:"none",
-  transition:"background .15s"
-};
-// ...garde Laser, ExplosionSVG, CockpitDashboard identiques à avant
-
 
 function Laser({
   target,
@@ -500,18 +478,9 @@ function ExplosionSVG() {
 function CockpitDashboard({ kanjiExplode, screenShake }: { kanjiExplode: boolean, screenShake: boolean }) {
   return (
     <div
+      className="absolute left-0 bottom-0 w-full h-32 sm:h-40 md:h-48 z-10 flex flex-row items-end justify-between px-4 pb-4"
       style={{
-        position: "absolute",
-        left: 0,
-        bottom: 0,
-        width: "100vw",
-        height: "225px",
-        background:
-          "linear-gradient(180deg,#253f69 55%,#22365f 90%,#141924 100%)",
-        zIndex: 10,
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "end",
+        background: "linear-gradient(180deg,#253f69 55%,#22365f 90%,#141924 100%)",
         boxShadow: kanjiExplode
           ? "0 0 45px 25px #fff3, 0 0 70px 12px #ff9603c1"
           : "0 0 35px #16e6e6a9",
@@ -521,104 +490,48 @@ function CockpitDashboard({ kanjiExplode, screenShake }: { kanjiExplode: boolean
         transition: "filter .21s, box-shadow .28s"
       }}
     >
+      {/* Radar gauche */}
       <div
+        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-green-900/50 rounded-xl border-2 border-green-400 flex items-center justify-center"
         style={{
-          width: "160px",
-          height: "155px",
-          marginLeft: "30px",
-          marginBottom: "20px",
-          background: "#092b15",
-          borderRadius: "17px",
-          border: "3px solid #38fd70",
-          boxShadow: "0 0 22px #24fc7a77",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
+          boxShadow: "0 0 15px #24fc7a77"
         }}
       >
-        <svg width="110" height="110">
-          <circle cx="55" cy="55" r="51" fill="#050" stroke="#24fc7a" strokeWidth="6" opacity="0.16" />
-          <circle cx="55" cy="55" r="36" fill="none" stroke="#92ff8e" strokeWidth="2" opacity="0.5" />
-          <path d="M55,55 L55,17 A38,38 0 0,1 87,31" stroke="#31fa82" strokeWidth="8" fill="none" opacity="0.64" />
-          <circle cx="55" cy="55" r="7" fill="#74fd80" opacity="0.65" />
-        </svg>
+        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-400/30 rounded-full border border-green-400"></div>
       </div>
-      <div
-        style={{
-          flex: 1,
-          height: "179px",
-          margin: "0 16px 4px 16px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "end"
-        }}
-      >
-        <div
-          style={{
-            width: "298px",
-            height: "66px",
-            background: "linear-gradient(180deg,#384d7f 70%,#163078 105%)",
-            borderRadius: "8px",
-            marginBottom: "12px",
-            boxShadow:
-              "inset 0 0 19px #8effff33,0 0 13px #2aeffd22"
-          }}
-        />
-        <div
-          style={{
-            width: "285px",
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "space-between"
-          }}
-        >
-          {Array.from({ length: 8 }).map((_, i) => (
+
+      {/* Écran central */}
+      <div className="flex-1 mx-4 h-16 sm:h-20 md:h-24 bg-blue-900/50 rounded-lg border border-blue-400/50 flex items-center justify-center">
+        <div className="grid grid-cols-6 gap-1">
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
+              className="w-3 h-2 sm:w-4 sm:h-3 bg-blue-400 rounded-sm opacity-80"
               style={{
-                width: 22,
-                height: 16,
-                margin: "4px",
-                background: i === 2 ? "#fff" : "#3b8fff",
-                borderRadius: "3px",
-                boxShadow:
-                  i === 2
-                    ? "0 0 12px #43d8ff"
-                    : "0 0 8px #138ffa55",
-                border:
-                  i === 2
-                    ? "2px solid #25fff3"
-                    : "1.8px solid #38eaff",
-                opacity: "0.96"
+                backgroundColor: i === 2 ? "#fff" : "#3b8fff",
+                boxShadow: i === 2 ? "0 0 8px #43d8ff" : "0 0 4px #138ffa55"
               }}
             />
           ))}
         </div>
       </div>
+
+      {/* Panneau droit */}
       <div
+        className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-orange-900/50 rounded-xl border-2 border-orange-400 flex items-center justify-center"
         style={{
-          width: "142px",
-          height: "151px",
-          marginRight: "27px",
-          marginBottom: "19px",
-          background: "#301c0a",
-          borderRadius: "17px",
-          border: "3px solid #ffb643",
-          boxShadow: "0 0 19px #fbe04c99",
-          position: "relative",
-          display: "flex",
-          alignItems: "end",
-          justifyContent: "center"
+          boxShadow: "0 0 15px #fbe04c99"
         }}
       >
-        <svg width="95" height="100" style={{ marginBottom: "23px" }}>
-          <rect x="8" y="49" width="15" height="37" fill="#ffe190" opacity="0.85" />
-          <rect x="32" y="33" width="15" height="53" fill="#ffc443" opacity="0.91" />
-          <rect x="56" y="73" width="15" height="13" fill="#fedc74" opacity="0.85" />
-          <rect x="74" y="43" width="12" height="43" fill="#fffaa0" opacity="0.85" />
-        </svg>
+        <div className="grid grid-cols-2 gap-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-2 h-4 sm:w-3 sm:h-6 bg-orange-400/70 rounded-sm"
+              style={{ height: `${20 + i * 10}px` }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

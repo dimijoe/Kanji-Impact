@@ -26,9 +26,10 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center relative overflow-hidden p-4">
       {/* Background animation */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900 via-gray-900 to-gray-900"></div>
+      
       {/* Animated stars */}
       <div className="absolute inset-0">
         {[...Array(50)].map((_, i) => (
@@ -45,22 +46,24 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
           ></div>
         ))}
       </div>
+      
       <audio
         ref={audioRef}
         src="https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3"
         loop
       />
-      <div className="relative bg-gray-800/90 p-8 rounded-2xl w-full max-w-md mx-4 backdrop-blur-lg border border-gray-700">
+      
+      <div className="relative bg-gray-800/90 backdrop-blur-lg border border-gray-700 rounded-2xl w-full max-w-md mx-auto p-6 sm:p-8">
         {/* User Info / Auth Button */}
         <div className="absolute -top-4 right-4">
           {currentUser ? (
             <button
               onClick={onShowProfile}
-              className="bg-sky-500 hover:bg-sky-600 text-white p-3 rounded-full transition-colors flex items-center gap-2"
+              className="bg-sky-500 hover:bg-sky-600 text-white p-3 rounded-full transition-colors flex items-center gap-2 touch-manipulation"
               title="Voir le profil"
             >
               {userProfile?.photoURL ? (
-                <img src={userProfile.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                <img src={userProfile.photoURL} alt="Profile" className="w-6 h-6 sm:w-8 sm:h-8 rounded-full" />
               ) : (
                 <User size={20} />
               )}
@@ -68,7 +71,7 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
           ) : (
             <Link to="/auth">
               <button
-                className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full transition-colors"
+                className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full transition-colors touch-manipulation"
                 title="Se connecter"
               >
                 <LogIn size={20} />
@@ -78,12 +81,13 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
         </div>
 
         <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-          <Rocket size={48} className="text-sky-400" />
+          <Rocket size={40} className="text-sky-400 sm:w-12 sm:h-12" />
         </div>
-        <h1 className="text-5xl font-bold text-center mb-2 bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 text-transparent bg-clip-text">
+        
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center mb-2 bg-gradient-to-r from-sky-400 via-blue-500 to-purple-600 text-transparent bg-clip-text mt-4">
           Kanji Invasion
         </h1>
-        <p className="text-gray-400 text-center mb-8">Master kanji through space combat</p>
+        <p className="text-gray-400 text-center mb-6 sm:mb-8 text-sm sm:text-base">Master kanji through space combat</p>
         
         {/* Welcome message for logged in users */}
         {currentUser && userProfile && (
@@ -94,68 +98,66 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-              <Brain size={20} /> Game Mode
+              <Brain size={18} /> Mode de jeu
             </label>
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as GameMode)}
-              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 text-white touch-manipulation"
             >
-              <option value="onYomi">On yomi (lecture chinese)</option>
+              <option value="onYomi">On yomi (lecture chinoise)</option>
               <option value="kunYomi">Kun yomi (lecture japonaise)</option>
               <option value="meaning">Traduction Française</option>
             </select>
           </div>
+          
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-              <ScrollText size={20} /> Kanji Level
+              <ScrollText size={18} /> Niveau Kanji
             </label>
             <select
               value={level}
               onChange={(e) => setLevel(e.target.value as KanjiLevel)}
-              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 text-white touch-manipulation"
             >
-              <option value="N5">JLPT N5 (Beginner)</option>
+              <option value="N5">JLPT N5 (Débutant)</option>
               <option value="N4">JLPT N4</option>
               <option value="N3">JLPT N3</option>
               <option value="N2">JLPT N2</option>
-              <option value="N1">JLPT N1 (Advanced)</option>
-              {/* Ajoute d'autres niveaux ou grades ici si besoin */}
+              <option value="N1">JLPT N1 (Avancé)</option>
             </select>
           </div>
+          
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
-              <Zap size={20} /> Speed
+              <Zap size={18} /> Vitesse
             </label>
             <select
               value={speed}
               onChange={(e) => setSpeed(e.target.value as GameSpeed)}
-              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+              className="w-full bg-gray-700/50 rounded-lg px-4 py-3 border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 text-white touch-manipulation"
             >
-              <option value="slow">Training (Slow)</option>
+              <option value="slow">Entraînement (Lent)</option>
               <option value="normal">Normal</option>
-              <option value="fast">Expert (Fast)</option>
+              <option value="fast">Expert (Rapide)</option>
             </select>
           </div>
 
           {/* BOUTON REVISER (APPRENTISSAGE) */}
           <button
             onClick={() => onRevision(level)}
-            className="w-full flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-lg hover:from-indigo-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 font-bold text-lg mb-2 gap-2"
+            className="w-full flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-lg hover:from-indigo-600 hover:to-purple-700 transform hover:scale-105 active:scale-95 transition-all duration-200 font-bold text-base sm:text-lg gap-2 touch-manipulation"
           >
-            <BookOpen size={22} className="mr-2" /> Réviser (Apprentissage)
+            <BookOpen size={20} /> Réviser (Apprentissage)
           </button>
           
-          {/* SEPARATEUR OU SPACING */}
-          <div className="h-2" />
-
           {/* BOUTON DE JEU */}
           <button
             onClick={() => onStart(mode, speed, level)}
-            className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white px-6 py-4 rounded-lg hover:from-sky-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 font-bold text-lg"
+            className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white px-6 py-4 rounded-lg hover:from-sky-600 hover:to-blue-700 transform hover:scale-105 active:scale-95 transition-all duration-200 font-bold text-base sm:text-lg touch-manipulation"
           >
             {currentUser ? 'Commencer la mission' : 'Se connecter pour jouer'}
           </button>

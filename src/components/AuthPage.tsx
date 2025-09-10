@@ -25,7 +25,7 @@ export function AuthPage() {
       } else {
         await register(email, password, displayName);
       }
-      navigate('/'); // Redirect to main menu after successful auth
+      navigate('/');
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -39,16 +39,19 @@ export function AuthPage() {
 
     try {
       await loginWithGoogle();
-      navigate('/'); // Redirect to main menu after successful auth
+      navigate('/');
     } catch (error: any) {
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  };  return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center relative overflow-hidden">
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center relative overflow-hidden p-4">
       {/* Background animation */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900 via-gray-900 to-gray-900"></div>
+      
       {/* Animated stars */}
       <div className="absolute inset-0">
         {[...Array(50)].map((_, i) => (
@@ -65,13 +68,14 @@ export function AuthPage() {
           ></div>
         ))}
       </div>
-      <div className="relative bg-gray-800/90 p-8 rounded-2xl w-full max-w-md mx-4 backdrop-blur-lg border border-gray-700">
-        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-sky-400 to-blue-500 text-transparent bg-clip-text">
+      
+      <div className="relative bg-gray-800/90 backdrop-blur-lg border border-gray-700 rounded-2xl w-full max-w-md mx-auto p-6 sm:p-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6 bg-gradient-to-r from-sky-400 to-blue-500 text-transparent bg-clip-text">
           {isLogin ? 'Connexion' : 'Inscription'}
         </h2>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
           </div>
         )}
@@ -85,7 +89,7 @@ export function AuthPage() {
                 placeholder="Nom d'utilisateur"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+                className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 touch-manipulation"
                 required
               />
             </div>
@@ -98,7 +102,7 @@ export function AuthPage() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+              className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 touch-manipulation"
               required
             />
           </div>
@@ -110,7 +114,7 @@ export function AuthPage() {
               placeholder="Mot de passe"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20"
+              className="w-full bg-gray-700/50 text-white pl-12 pr-4 py-3 rounded-lg border border-gray-600 focus:border-sky-500 focus:ring focus:ring-sky-500/20 touch-manipulation"
               required
             />
           </div>
@@ -118,7 +122,7 @@ export function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white py-3 rounded-lg hover:from-sky-600 hover:to-blue-700 transition-all duration-200 font-semibold disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white py-3 rounded-lg hover:from-sky-600 hover:to-blue-700 transition-all duration-200 font-semibold disabled:opacity-50 touch-manipulation"
           >
             {loading ? 'Chargement...' : (isLogin ? 'Se connecter' : "S'inscrire")}
           </button>
@@ -133,13 +137,13 @@ export function AuthPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full bg-white text-gray-800 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full bg-white text-gray-800 py-3 rounded-lg hover:bg-gray-100 transition-all duration-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 touch-manipulation"
         >
           <Chrome size={20} />
           Continuer avec Google
         </button>
 
-        <p className="text-center text-gray-400 mt-6">
+        <p className="text-center text-gray-400 mt-6 text-sm">
           {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}
           <button
             onClick={() => setIsLogin(!isLogin)}

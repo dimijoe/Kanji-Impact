@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { GameState } from '../types';
 import { kanjis } from '../data/kanjis';
-import { GameService } from '../services/gameService'; // À adapter !
+import { GameService } from '../services/gameService'; // Adapter le chemin selon ton arborescence !
+
 interface GameOverProps {
   gameState: GameState | null;
   onRestart: () => void;
   onMenu: () => void;
-  onAfterSave?: () => void; // pour rediriger vers la page "Bravo"
+  onAfterSave?: () => void; // callback pour la navigation après enregistrement (ex: affiche page Bravo)
 }
 type HighScore = { user: string; score: number };
 
@@ -16,12 +17,11 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
   const [highScores, setHighScores] = useState<HighScore[]>([]);
   const [showSavePrompt, setShowSavePrompt] = useState(true);
 
-  // Charger les meilleurs scores du niveau JLPT courant
+  // Chargement des meilleurs scores pour le niveau actuel
   useEffect(() => {
     async function fetchHighScores() {
       if (!gameState?.level) return;
       try {
-        // Adapter selon GameService !
         const top = await GameService.getHighScoresByLevel(gameState.level, 5);
         setHighScores(top);
       } catch (e) {
@@ -31,7 +31,7 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
     fetchHighScores();
   }, [gameState?.level]);
 
-  // Protection gameState et currentKanji
+  // Protection contre état null
   if (!gameState || !gameState.currentKanji) {
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -55,11 +55,11 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Enregistre la partie dans Firestore (adapter selon GameService)
+      // Enregistrement du score (pense à adapter si tu veux ajouter displayName)
       await GameService.saveGameResult(gameState);
       setSaveDone(true);
       setShowSavePrompt(false);
-      if (onAfterSave) onAfterSave(); // Redirige si besoin
+      if (onAfterSave) onAfterSave();
     } catch (e) {
       alert("Erreur lors de l'enregistrement du score.");
     } finally {
@@ -73,13 +73,13 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
     onMenu();
   };
 
-  // Message "Bravo" après enregistrement
+  // Affichage post-enregistrement ("Bravo !")
   if (saveDone) {
     return (
       <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-sm">
         <div className="bg-gray-900/95 p-8 rounded-2xl text-white max-w-lg w-full mx-4 shadow-2xl text-center">
           <h2 className="text-4xl font-bold mb-6 text-green-400">Bravo, vous avez terminé !</h2>
-          <p className="mb-8 text-xl">Votre score a été enregistré !</p>
+          <p className="mb-8 text-xl">Votre score a été enregistré&nbsp;!</p>
           <button
             onClick={onMenu}
             className="bg-gradient-to-r from-sky-500 to-blue-700 text-white px-8 py-4 rounded-lg font-semibold shadow-lg transition hover:from-sky-600 hover:to-blue-800"

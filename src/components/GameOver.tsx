@@ -8,24 +8,7 @@ interface GameOverProps {
   onMenu: () => void;
 }
 
-export function GameOver({ gameState, onRestart, onMenu }: GameOverProps) {
-  // Cas erreur : données manquantes
-  if (!gameState || !gameState.currentKanji) {
-    return (
-      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
-        <div className="bg-gray-800/90 p-8 rounded-2xl text-white max-w-xl w-full mx-4 text-center">
-          <h2 className="text-3xl font-bold mb-6 text-red-400">Erreur</h2>
-          <p className="mb-6">Impossible d'afficher la fin de partie.<br />Clique sur Menu pour recommencer.</p>
-          <button
-            onClick={onMenu}
-            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-all font-semibold"
-          >
-            Retour au Menu
-          </button>
-        </div>
-      </div>
-    );
-  }
+/
 
   // Cherche le kanji responsable de l'échec
   const failedKanji = kanjis.find(k => k.character === gameState.currentKanji.character);

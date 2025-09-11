@@ -130,7 +130,7 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           setKanjiExplode(false);
           setCockpitExplode(false);
           setScreenShake(false);
-        }, 600);
+        }, 400);
       } else {
         animRef.current = requestAnimationFrame(loop);
       }

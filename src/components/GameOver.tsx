@@ -35,20 +35,7 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
 
   // Protection contre état null
   if (!gameState || !gameState.currentKanji) {
-    return (
-      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div className="bg-gray-800/95 p-8 rounded-2xl text-white max-w-xl w-full mx-4 shadow-2xl text-center">
-          <h2 className="text-4xl font-bold mb-6 text-red-500">Erreur</h2>
-          <p className="text-gray-300 mb-8">Impossible d'afficher la fin de partie...</p>
-          <button
-            onClick={onMenu}
-            className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition font-semibold touch-manipulation"
-          >
-            Retour au Menu
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const failedKanji = kanjis.find(k => k.character === gameState.currentKanji.character);

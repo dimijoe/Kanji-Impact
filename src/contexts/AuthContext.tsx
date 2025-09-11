@@ -13,6 +13,11 @@ import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firest
 import { auth, db } from '../config/firebase';
 import { UserProfile } from '../types';
 
+// ----- Fonction utilitaire pour éviter undefined -----
+function removeUndefined(obj: any) {
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+}
+
 interface AuthContextType {
   currentUser: User | null;
   userProfile: UserProfile | null;
@@ -44,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       uid: user.uid,
       email: user.email || '',
       displayName: user.displayName || 'Anonymous Player',
-      photoURL: user.photoURL || undefined,
+      photoURL: user.photoURL ?? null, // null plutôt que undefined
       createdAt: new Date(),
       lastLoginAt: new Date(),
       totalGamesPlayed: 0,
@@ -62,8 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'Jōyō2': { level: 'Jōyō2', totalKanjisLearned: 0, masteredKanjis: new Set(), averageAccuracy: 0, bestTime: 0, gamesPlayed: 0 }
       }
     };
-
-    await setDoc(doc(db, 'users', user.uid), {
+    await setDoc(doc(db, 'users', user.uid), removeUndefined({
       ...userProfile,
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
@@ -73,14 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           { ...value, masteredKanjis: Array.from(value.masteredKanjis) }
         ])
       )
-    });
-
+    }));
     return userProfile;
   };
 
   const loadUserProfile = async (user: User): Promise<UserProfile> => {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
-    
     if (userDoc.exists()) {
       const data = userDoc.data();
       const profile: UserProfile = {
@@ -94,12 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ])
         )
       } as UserProfile;
-
       // Update last login
-      await updateDoc(doc(db, 'users', user.uid), {
-        lastLoginAt: serverTimestamp()
-      });
-
+      await updateDoc(doc(db, 'users', user.uid), { lastLoginAt: serverTimestamp() });
       return profile;
     } else {
       return await createUserProfile(user);
@@ -128,10 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
-    
     const updatedProfile = { ...userProfile, ...updates };
     setUserProfile(updatedProfile);
-    
+
     // Convert Sets to Arrays for Firestore
     const firestoreData = {
       ...updates,
@@ -142,8 +139,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ])
       ) : undefined
     };
-    
-    await updateDoc(doc(db, 'users', currentUser.uid), firestoreData);
+
+    await updateDoc(doc(db, 'users', currentUser.uid), removeUndefined(firestoreData));
   };
 
   useEffect(() => {
@@ -161,7 +158,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
@@ -175,7 +171,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     updateUserProfile
   };
-
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}

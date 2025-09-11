@@ -5,11 +5,11 @@ import { Cockpit } from './components/Cockpit';
 import { GameOver } from './components/GameOver';
 import { MainMenu } from './components/MainMenu';
 import { Learning } from './components/Learning';
-import { AuthPage } from './components/AuthPage'; // Import AuthPage
+import { AuthPage } from './components/AuthPage';
 import { GameState, GameMode, GameSpeed, KanjiLevel, Kanji } from './types';
 import { kanjis } from './data/kanjis';
 import { GameService } from './services/gameService';
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'; // Import BrowserRouter, Routes, Route, Navigate, Link
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 const INITIAL_STATE: GameState = {
   score: 0,
@@ -25,6 +25,7 @@ const INITIAL_STATE: GameState = {
 };
 
 type AppScreen = 'menu' | 'game' | 'learning';
+
 const SPEED_MAP = {
   slow: 8000,
   normal: 5000,
@@ -38,32 +39,27 @@ function GameApp() {
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
   const [isMobileVersion, setIsMobileVersion] = useState(false);
 
-  // Redirect to auth if not logged in and trying to play
+  // Redirection vers menu si non connecté
   useEffect(() => {
     if (currentScreen === 'game' && !currentUser) {
       setCurrentScreen('menu');
     }
   }, [currentScreen, currentUser]);
 
+  // Spawner les kanjis, timer de jeu
   useEffect(() => {
     if (currentScreen === 'game' && !gameState.gameOver) {
       const spawnKanji = () => {
         const levelKanjis = kanjis.filter(k => k.group === gameState.level);
-        // Filter out already destroyed kanjis
         const availableKanjis = levelKanjis.filter(k => !gameState.destroyedKanjis.has(k.id));
-        
-        // If all kanjis are destroyed, end the game with victory
         if (availableKanjis.length === 0) {
           setGameState(prev => ({ ...prev, gameOver: true }));
           return;
         }
-        
         const randomKanji = availableKanjis[Math.floor(Math.random() * availableKanjis.length)];
         setGameState((prev) => ({ ...prev, currentKanji: randomKanji }));
       };
-
       spawnKanji();
-
       const timer = setInterval(() => {
         setGameState((prev) => {
           if (prev.shields <= 1) {
@@ -72,34 +68,31 @@ function GameApp() {
           return { ...prev, shields: prev.shields - 1 };
         });
       }, SPEED_MAP[gameState.speed]);
-
       return () => clearInterval(timer);
     }
   }, [currentScreen, gameState.gameOver, gameState.speed, gameState.level, gameState.destroyedKanjis]);
 
+  // Indique la fin du jeu
   const handleGameOver = () => {
     setGameState(prev => ({ ...prev, gameOver: true }));
   };
 
+  // Gestion des réponses utilisateur
   const handleAnswer = (answer: string) => {
     if (!gameState.currentKanji) return;
-
     const newTotalAttempts = gameState.totalAttempts + 1;
-
     const isCorrect = gameState.mode === 'meaning'
       ? gameState.currentKanji.meanings.includes(answer.toLowerCase())
       : gameState.mode === 'onYomi'
         ? gameState.currentKanji.onYomi.includes(answer)
         : gameState.currentKanji.kunYomi.includes(answer);
 
-    // Enregistrer la tentative sur ce kanji spécifique
     if (currentUser) {
       const correctAnswers = gameState.mode === 'meaning'
         ? gameState.currentKanji.meanings
         : gameState.mode === 'onYomi'
           ? gameState.currentKanji.onYomi
           : gameState.currentKanji.kunYomi;
-
       const kanjiAttempt = {
         userId: currentUser.uid,
         kanjiId: gameState.currentKanji.id,
@@ -110,7 +103,6 @@ function GameApp() {
         isCorrect,
         attemptedAt: new Date()
       };
-
       GameService.saveKanjiAttempt(kanjiAttempt).catch(error => {
         console.error('Erreur lors de l\'enregistrement de la tentative:', error);
       });
@@ -118,18 +110,13 @@ function GameApp() {
 
     if (isCorrect) {
       const newCorrectAnswers = gameState.correctAnswers + 1;
-      
       const levelKanjis = kanjis.filter(k => k.group === gameState.level);
-      // Add current kanji to destroyed set
       const newDestroyedKanjis = new Set(gameState.destroyedKanjis);
       newDestroyedKanjis.add(gameState.currentKanji.id);
-      
-      // Filter out destroyed kanjis for next selection
       const availableKanjis = levelKanjis.filter(k => !newDestroyedKanjis.has(k.id));
       const randomKanji = availableKanjis.length > 0 
         ? availableKanjis[Math.floor(Math.random() * availableKanjis.length)]
         : null;
-
       setGameState((prev) => ({
         ...prev,
         score: prev.score + 100,
@@ -137,24 +124,25 @@ function GameApp() {
         totalAttempts: newTotalAttempts,
         currentKanji: randomKanji,
         destroyedKanjis: newDestroyedKanjis,
-        gameOver: availableKanjis.length === 0 // Victory condition
+        gameOver: availableKanjis.length === 0 // Victoire ?
       }));
     } else {
       setGameState(prev => ({ ...prev, totalAttempts: newTotalAttempts }));
     }
   };
 
+  // Démarrage d'une partie
   const handleStart = (mode: GameMode, speed: GameSpeed, level: KanjiLevel, isMobileVersion: boolean = false) => {
     if (!currentUser) {
       return;
     }
-    
     setIsMobileVersion(isMobileVersion);
     setGameState({ ...INITIAL_STATE, mode, speed, level, destroyedKanjis: new Set() });
     setGameStartTime(new Date());
     setCurrentScreen('game');
   };
 
+  // Relancer une partie
   const handleRestart = () => {
     setGameState({ ...INITIAL_STATE, 
       mode: gameState.mode, 
@@ -166,12 +154,11 @@ function GameApp() {
     setCurrentScreen('game');
   };
 
+  // Retour menu, sauvegarde session
   const handleBackToMenu = async () => {
-    // Save game session if game was played
     if (gameStartTime && currentUser && userProfile && gameState.totalAttempts > 0) {
       const duration = Math.floor((new Date().getTime() - gameStartTime.getTime()) / 1000);
       const accuracy = gameState.totalAttempts > 0 ? (gameState.correctAnswers / gameState.totalAttempts) * 100 : 0;
-      
       const gameSession = {
         userId: currentUser.uid,
         mode: gameState.mode,
@@ -185,7 +172,6 @@ function GameApp() {
         kanjisDestroyed: Array.from(gameState.destroyedKanjis),
         completedAt: new Date()
       };
-
       try {
         await GameService.saveGameSession(gameSession);
         const profileUpdates = await GameService.updateUserStats(currentUser.uid, gameSession, userProfile);
@@ -194,7 +180,6 @@ function GameApp() {
         console.error('Error saving game session:', error);
       }
     }
-
     setCurrentScreen('menu');
     setGameState(INITIAL_STATE);
     setGameStartTime(null);
@@ -213,12 +198,10 @@ function GameApp() {
           onShowProfile={() => {}}
         />
       )}
-
       {currentScreen === 'learning' && (
         <Learning onBack={handleBackToMenu} />
       )}
-
-      {currentScreen === 'game' && (
+      {currentScreen === 'game' && !gameState.gameOver && (
         <Cockpit 
           gameState={gameState} 
           onAnswer={handleAnswer} 
@@ -227,8 +210,7 @@ function GameApp() {
           isMobileVersion={isMobileVersion}
         />
       )}
-
-      {gameState.gameOver && (
+      {currentScreen === 'game' && gameState.gameOver && (
         <GameOver 
           gameState={gameState} 
           onRestart={handleRestart} 
@@ -259,18 +241,15 @@ function App() {
   );
 }
 
-// ProtectedRoute component
+// ProtectedRoute component sécurisé
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useAuth();
-
   if (loading) {
     return <div>Loading...</div>;
   }
-
   if (!currentUser) {
     return <Navigate to="/auth" />;
   }
-
   return children;
 }
 

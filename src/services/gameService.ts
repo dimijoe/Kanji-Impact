@@ -21,7 +21,7 @@ export class GameService {
       orderBy('attemptedAt', 'desc'),
       limit(limitCount)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -30,6 +30,7 @@ export class GameService {
     })) as KanjiAttempt[];
   }
 
+  // Enregistrer une session de jeu complète
   static async saveGameSession(session: Omit<GameSession, 'id'>): Promise<string> {
     const docRef = await addDoc(collection(db, 'gameSessions'), {
       ...session,
@@ -38,6 +39,7 @@ export class GameService {
     return docRef.id;
   }
 
+  // Récupérer les sessions de jeu utilisateur
   static async getUserGameSessions(userId: string, limitCount: number = 10): Promise<GameSession[]> {
     const q = query(
       collection(db, 'gameSessions'),
@@ -45,7 +47,7 @@ export class GameService {
       orderBy('completedAt', 'desc'),
       limit(limitCount)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
@@ -54,6 +56,7 @@ export class GameService {
     })) as GameSession[];
   }
 
+  // Leaderboard sur les parties complètes
   static async getLeaderboard(level: KanjiLevel, limitCount: number = 10): Promise<any[]> {
     const q = query(
       collection(db, 'gameSessions'),
@@ -61,13 +64,46 @@ export class GameService {
       orderBy('score', 'desc'),
       limit(limitCount)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data());
   }
 
+  // Nouvelle méthode : enregistrer un score type "GameOver"
+  static async saveGameResult(gameState: GameState) {
+    if (!gameState.userId) throw new Error("Aucun userId fourni !");
+    if (typeof gameState.score !== "number") throw new Error("Score absent ou invalide !");
+    await addDoc(collection(db, 'gameScores'), {
+      userId: gameState.userId,
+      displayName: gameState.displayName || "Anonyme",
+      score: gameState.score,
+      level: gameState.level,
+      mode: gameState.mode,
+      speed: gameState.speed,
+      date: serverTimestamp()
+      // Ajoute ici d'autres infos utiles si besoin
+    });
+  }
+
+  // Nouvelle méthode : top N scores JLPT par niveau (pour leaderboard GameOver)
+  static async getHighScoresByLevel(level: string, topN: number = 5) {
+    const scoresRef = collection(db, 'gameScores');
+    const q = query(
+      scoresRef,
+      where('level', '==', level),
+      orderBy('score', 'desc'),
+      limit(topN)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+      user: doc.data().displayName || doc.data().userId || 'Anonyme',
+      score: doc.data().score
+    }));
+  }
+
+  // Mise à jour des stats utilisateur après partie
   static async updateUserStats(
-    userId: string, 
+    userId: string,
     gameSession: Omit<GameSession, 'id' | 'userId'>,
     currentProfile: UserProfile
   ): Promise<Partial<UserProfile>> {
@@ -77,11 +113,10 @@ export class GameService {
       bestScore: Math.max(currentProfile.bestScore, gameSession.score),
       lastLoginAt: new Date()
     };
-
     // Update level progress
     const levelProgress = { ...currentProfile.levelProgress };
     const currentLevelProgress = levelProgress[gameSession.level];
-    
+
     levelProgress[gameSession.level] = {
       ...currentLevelProgress,
       gamesPlayed: currentLevelProgress.gamesPlayed + 1,
@@ -94,28 +129,23 @@ export class GameService {
         ...gameSession.kanjisDestroyed
       ])
     };
-
     updates.levelProgress = levelProgress;
 
     // Check for new badges and achievements
     const newBadges = this.checkForNewBadges(currentProfile, updates);
     const newAchievements = this.checkForNewAchievements(currentProfile, updates);
-
     if (newBadges.length > 0) {
       updates.badges = [...currentProfile.badges, ...newBadges];
     }
-
     if (newAchievements.length > 0) {
       updates.achievements = [...currentProfile.achievements, ...newAchievements];
     }
-
     return updates;
   }
 
   private static checkForNewBadges(currentProfile: UserProfile, updates: Partial<UserProfile>): Badge[] {
     const badges: Badge[] = [];
     const existingBadgeIds = new Set(currentProfile.badges.map(b => b.id));
-
     // First Game Badge
     if (currentProfile.totalGamesPlayed === 0 && !existingBadgeIds.has('first-game')) {
       badges.push({
@@ -127,7 +157,6 @@ export class GameService {
         rarity: 'common'
       });
     }
-
     // High Score Badges
     if (updates.bestScore && updates.bestScore >= 1000 && !existingBadgeIds.has('score-1000')) {
       badges.push({
@@ -139,7 +168,6 @@ export class GameService {
         rarity: 'rare'
       });
     }
-
     if (updates.bestScore && updates.bestScore >= 5000 && !existingBadgeIds.has('score-5000')) {
       badges.push({
         id: 'score-5000',
@@ -150,7 +178,6 @@ export class GameService {
         rarity: 'epic'
       });
     }
-
     // Games Played Badges
     if (updates.totalGamesPlayed && updates.totalGamesPlayed >= 10 && !existingBadgeIds.has('games-10')) {
       badges.push({
@@ -162,54 +189,16 @@ export class GameService {
         rarity: 'common'
       });
     }
-
     return badges;
   }
-// Enregistre un score de partie
-export async function saveGameResult(gameState: GameState) {
-  // Adapte le modèle selon ce que tu veux garder !
-  await addDoc(collection(db, 'gameScores'), {
-    userId: gameState.userId,            // À passer depuis l'état de l'utilisateur connecté
-    score: gameState.score,
-    level: gameState.level,
-    mode: gameState.mode,
-    speed: gameState.speed,
-    date: serverTimestamp()
-    // Tu peux aussi ajouter : username/displayName/game details…
-  });
-}
-
-/ Charge le top N des scores pour un niveau
-export async function getHighScoresByLevel(level: string, topN: number = 5) {
-  const scoresRef = collection(db, 'gameScores');
-  const q = query(
-    scoresRef,
-    where('level', '==', level),
-    orderBy('score', 'desc'),
-    limit(topN)
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(doc => ({
-    user: doc.data().userId || 'Anonyme',      // tu peux aussi stocker le username dans le doc pour l'afficher
-    score: doc.data().score
-  }));
-}
-
-
-
-
-  
 
   private static checkForNewAchievements(currentProfile: UserProfile, updates: Partial<UserProfile>): Achievement[] {
     const achievements: Achievement[] = [];
-    
-    // Perfect Game Achievement
-    const perfectGameAchievement = currentProfile.achievements.find(a => a.id === 'perfect-accuracy');
-    if (!perfectGameAchievement || !perfectGameAchievement.completed) {
-      // This would be checked based on the current game session
-      // Implementation depends on how you want to track this
-    }
-
+    // TODO : implémenter selon ta logique de jeu !
     return achievements;
   }
 }
+
+// (optionnel - pour compatibilité avec certains imports)
+export const GameServiceSingleton = GameService;
+export default GameService;

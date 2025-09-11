@@ -17,7 +17,6 @@ function getRandomTrajectory(): Trajectory {
   if (r < 0.67) return "right";
   return "center";
 }
-
 interface CockpitProps {
   gameState: GameState;
   onAnswer: (answer: string) => void;
@@ -54,17 +53,13 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
     ] || 7;
   const [kanjiStart, setKanjiStart] = useState({ x: 0.5, y: 0.06 });
   const [kanjiEnd, setKanjiEnd] = useState({ x: 0.5, y: 0.38 });
-
   useEffect(() => {
     if (!currentKanji) return;
-    
     if (isMobileVersion) {
-      // Version mobile : kanji arrive de face uniquement
       setKanjiStart({ x: 0.5, y: 0.06 });
       setKanjiEnd({ x: 0.5, y: 0.38 });
       setLaserDirection("center");
     } else {
-      // Version web : trajectoires multiples
       let trajectory: Trajectory = getRandomTrajectory();
       setLaserDirection(trajectory);
       let startPos, endPos;
@@ -81,7 +76,6 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
       setKanjiStart(startPos);
       setKanjiEnd(endPos);
     }
-    
     setKanjiZ(0);
     setKanjiArrive(false);
     setKanjiExplode(false);
@@ -115,22 +109,19 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
         setKanjiExplode(true);
         setCockpitExplode(true);
         setScreenShake(true);
-        
-        // Jouer le son d'explosion
         playSound('/audio/Sound_explosion.mp3');
-        
-        // Afficher Game Over quasi instantanément après l'explosion
+        // 1. Explosion et tremblement (screenShake vrai) visibles 300 ms :
+        setTimeout(() => {
+          setScreenShake(false);
+          setKanjiExplode(false);
+          setCockpitExplode(false);
+        }, 300);
+        // 2. Appel GameOver >20ms plus tard, écran déjà stable
         setTimeout(() => {
           if (onGameOver) {
             onGameOver();
           }
-        }, 300); // 300ms pour voir l'explosion puis Game Over
-        
-        setTimeout(() => {
-          setKanjiExplode(false);
-          setCockpitExplode(false);
-          setScreenShake(false);
-        }, 400);
+        }, 330); // délai légèrement plus grand pour le rendu
       } else {
         animRef.current = requestAnimationFrame(loop);
       }
@@ -158,7 +149,6 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
     window.addEventListener("mousedown", handle);
     return () => window.removeEventListener("mousedown", handle);
   }, []);
-
   function checkKanjiAnswer(userInput: string, kanji: any, mode: string) {
     if (!kanji || !userInput) return false;
     if (mode === "meaning") {
@@ -218,12 +208,9 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
   const mainStyle: React.CSSProperties = screenShake
     ? { animation: "screenShake 0.36s cubic-bezier(.23,1.85,.42,-0.2) 2" }
     : {};
-
-  // Calcul de la taille du kanji pour l'effet de rapprochement (version mobile)
   const kanjiScale = isMobileVersion 
-    ? 0.3 + 2.0 * kanjiZ // Effet de rapprochement plus prononcé
+    ? 0.3 + 2.0 * kanjiZ
     : 0.18 + 1.25 * kanjiZ;
-
   return (
     <div
       style={{
@@ -252,7 +239,7 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
         />
       )}
       
-      {/* Score et temps - Responsive */}
+      {/* Score et temps */}
       <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-30">
         <div className="bg-black/50 rounded-lg px-3 py-2 text-white">
           <div className="text-xs sm:text-sm text-gray-300">Score</div>
@@ -263,8 +250,7 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           <div className="text-lg sm:text-xl font-bold text-orange-400">{timeLeft}s</div>
         </div>
       </div>
-
-      {/* Boutons de contrôle - Responsive */}
+      {/* Boutons de contrôle */}
       <div className="absolute top-2 right-2 z-30 flex gap-2">
         <button 
           onClick={handlePauseToggle} 
@@ -279,7 +265,6 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           Menu
         </button>
       </div>
-
       {isPaused && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800/95 rounded-2xl p-6 w-full max-w-sm text-center">
@@ -301,8 +286,7 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           </div>
         </div>
       )}
-
-      {/* Kanji animé - Taille responsive avec effet de rapprochement */}
+      {/* Kanji animé */}
       {currentKanji && (
         <div
           style={{
@@ -344,21 +328,18 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           )}
         </div>
       )}
-
       {showLaser && (
         <Laser
           target={kanjiPos}
           direction={laserDirection}
         />
       )}
-
       <CockpitDashboard
         kanjiExplode={kanjiExplode}
         screenShake={screenShake}
         cockpitExplode={cockpitExplode}
       />
-
-      {/* Interface de saisie - Complètement responsive */}
+      {/* Interface de saisie */}
       <div className="absolute bottom-4 left-4 right-4 z-40">
         <form
           onSubmit={handleSubmit}
@@ -389,8 +370,6 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
               TIRER
             </button>
           </div>
-          
-          {/* Indicateur de mode de jeu */}
           <div className="mt-3 text-center">
             <span className="text-xs text-gray-400 bg-gray-800/50 px-3 py-1 rounded-full">
               Mode: {gameState.mode === 'onYomi' ? "On'yomi" : gameState.mode === 'kunYomi' ? "Kun'yomi" : "Signification"}
@@ -399,7 +378,6 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
           </div>
         </form>
       </div>
-
       <style>
         {`
         @keyframes screenShake {
@@ -544,7 +522,6 @@ function CockpitDashboard({ kanjiExplode, screenShake, cockpitExplode }: {
       >
         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-400/30 rounded-full border border-green-400"></div>
       </div>
-
       {/* Écran central */}
       <div className="flex-1 mx-4 h-16 sm:h-20 md:h-24 bg-blue-900/50 rounded-lg border border-blue-400/50 flex items-center justify-center">
         <div className="grid grid-cols-6 gap-1">
@@ -560,7 +537,6 @@ function CockpitDashboard({ kanjiExplode, screenShake, cockpitExplode }: {
           ))}
         </div>
       </div>
-
       {/* Panneau droit */}
       <div
         className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-orange-900/50 rounded-xl border-2 border-orange-400 flex items-center justify-center"

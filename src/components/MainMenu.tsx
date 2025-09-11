@@ -50,7 +50,7 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
       
       <audio
         ref={audioRef}
-        src="https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3"
+        src="https://www.epidemicsound.com/fr/music/tracks/b00691e1-e53b-4442-9900-64188a134857/"
         loop
       />
       

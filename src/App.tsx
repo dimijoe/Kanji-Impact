@@ -168,7 +168,7 @@ function GameApp() {
 
   const handleBackToMenu = async () => {
     // Save game session if game was played
-    if (currentScreen === 'game' && gameStartTime && currentUser && userProfile) {
+    if (gameStartTime && currentUser && userProfile && gameState.totalAttempts > 0) {
       const duration = Math.floor((new Date().getTime() - gameStartTime.getTime()) / 1000);
       const accuracy = gameState.totalAttempts > 0 ? (gameState.correctAnswers / gameState.totalAttempts) * 100 : 0;
       

@@ -1,6 +1,6 @@
-import { collection, addDoc, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { GameSession, UserProfile, Badge, Achievement, KanjiLevel, KanjiAttempt } from '../types';
+import { GameState, GameSession, UserProfile, Badge, Achievement, KanjiLevel, KanjiAttempt } from '../types';
 
 export class GameService {
   // Enregistrer une tentative sur un kanji spécifique
@@ -165,6 +165,40 @@ export class GameService {
 
     return badges;
   }
+// Enregistre un score de partie
+export async function saveGameResult(gameState: GameState) {
+  // Adapte le modèle selon ce que tu veux garder !
+  await addDoc(collection(db, 'gameScores'), {
+    userId: gameState.userId,            // À passer depuis l'état de l'utilisateur connecté
+    score: gameState.score,
+    level: gameState.level,
+    mode: gameState.mode,
+    speed: gameState.speed,
+    date: serverTimestamp()
+    // Tu peux aussi ajouter : username/displayName/game details…
+  });
+}
+
+/ Charge le top N des scores pour un niveau
+export async function getHighScoresByLevel(level: string, topN: number = 5) {
+  const scoresRef = collection(db, 'gameScores');
+  const q = query(
+    scoresRef,
+    where('level', '==', level),
+    orderBy('score', 'desc'),
+    limit(topN)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({
+    user: doc.data().userId || 'Anonyme',      // tu peux aussi stocker le username dans le doc pour l'afficher
+    score: doc.data().score
+  }));
+}
+
+
+
+
+  
 
   private static checkForNewAchievements(currentProfile: UserProfile, updates: Partial<UserProfile>): Achievement[] {
     const achievements: Achievement[] = [];

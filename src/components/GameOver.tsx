@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GameState } from '../types';
 import { kanjis } from '../data/kanjis';
 import { GameService } from '../services/gameService';
-import { useAuth } from '../contexts/AuthContext'; // Ajout du contexte Auth
+import { useAuth } from '../contexts/AuthContext';
 
 interface GameOverProps {
   gameState: GameState | null;
@@ -19,28 +19,29 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
   const [showSavePrompt, setShowSavePrompt] = useState(true);
   const { currentUser } = useAuth();
 
-  // Chargement des meilleurs scores pour le niveau actuel
-  useEffect(() => {
-    async function fetchHighScores() {
-      if (!gameState?.level) return;
-      try {
-        const top = await GameService.getHighScoresByLevel(gameState.level, 5);
-        setHighScores(top);
-      } catch (e) {
-        setHighScores([]);
-      }
+  // Facteur : permet de ressaisir à la fois initialement ET après enregistrement score
+  const fetchHighScores = async () => {
+    if (!gameState?.level) return;
+    try {
+      const top = await GameService.getHighScoresByLevel(gameState.level, 5);
+      setHighScores(top);
+    } catch (e) {
+      setHighScores([]);
     }
+  };
+
+  useEffect(() => {
     fetchHighScores();
+    // eslint-disable-next-line
   }, [gameState?.level]);
 
-  // Protection contre état null
   if (!gameState || !gameState.currentKanji) {
     return null;
   }
 
   const failedKanji = kanjis.find(k => k.character === gameState.currentKanji.character);
 
-  // Handler pour enregistrer le score
+  // Handler pour enregistrer le score + MAJ leaderboard
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -50,6 +51,8 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
         userId: currentUser.uid,
         displayName: currentUser.displayName || "Anonyme",
       });
+      // Recharge le leaderboard après l'ajout du score
+      await fetchHighScores();
       setSaveDone(true);
       setShowSavePrompt(false);
       if (onAfterSave) onAfterSave();
@@ -73,6 +76,24 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
         <div className="bg-gray-900/95 p-8 rounded-2xl text-white max-w-lg w-full mx-4 shadow-2xl text-center">
           <h2 className="text-4xl font-bold mb-6 text-green-400">Bravo, vous avez terminé !</h2>
           <p className="mb-8 text-xl">Votre score a été enregistré&nbsp;!</p>
+          {/* Leaderbord live même après save ! */}
+          <div className="bg-gray-900/60 rounded-xl p-4 mb-4">
+            <h3 className="text-sm font-bold mb-2 text-yellow-300">
+              Top scores – Niveau {gameState.level}
+            </h3>
+            <ol className="text-base text-gray-200 space-y-1 text-left max-w-xs mx-auto">
+              {highScores.length === 0 
+                ? <li className="text-gray-400 italic">Pas de score enregistré</li>
+                : highScores.map((s, i) => (
+                    <li key={i}>
+                      <span className="font-bold text-white">{i + 1}.</span>
+                      &nbsp;<span className="text-sky-300">{s.user}</span>
+                      &nbsp;–&nbsp;
+                      <span className="font-semibold text-sky-400">{s.score}</span>
+                    </li>
+                  ))}
+            </ol>
+          </div>
           <button
             onClick={onMenu}
             className="bg-gradient-to-r from-sky-500 to-blue-700 text-white px-8 py-4 rounded-lg font-semibold shadow-lg transition hover:from-sky-600 hover:to-blue-800"

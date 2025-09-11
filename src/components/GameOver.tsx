@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { GameState } from '../types';
 import { kanjis } from '../data/kanjis';
-import { GameService } from '../services/gameService'; // Adapter le chemin selon ton arborescence !
+import { GameService } from '../services/gameService';
+import { useAuth } from '../contexts/AuthContext'; // Ajout du contexte Auth
 
 interface GameOverProps {
   gameState: GameState | null;
@@ -16,6 +17,7 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
   const [saveDone, setSaveDone] = useState(false);
   const [highScores, setHighScores] = useState<HighScore[]>([]);
   const [showSavePrompt, setShowSavePrompt] = useState(true);
+  const { currentUser } = useAuth();
 
   // Chargement des meilleurs scores pour le niveau actuel
   useEffect(() => {
@@ -55,13 +57,17 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Enregistrement du score (pense à adapter si tu veux ajouter displayName)
-      await GameService.saveGameResult(gameState);
+      if (!currentUser) throw new Error("Utilisateur non connecté !");
+      await GameService.saveGameResult({
+        ...gameState,
+        userId: currentUser.uid,
+        displayName: currentUser.displayName || "Anonyme",
+      });
       setSaveDone(true);
       setShowSavePrompt(false);
       if (onAfterSave) onAfterSave();
-    } catch (e) {
-      alert("Erreur lors de l'enregistrement du score.");
+    } catch (e: any) {
+      alert("Erreur lors de l'enregistrement du score : " + (e?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -97,7 +103,6 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
         <h2 className="text-4xl font-bold mb-6 text-center text-red-500">
           Game Over
         </h2>
-
         {/* Score et résumé */}
         <div className="mb-6 text-center">
           <p className="text-2xl mb-2 font-semibold">
@@ -108,7 +113,6 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
             &nbsp;| Vitesse : {gameState.speed} &nbsp;| Niveau : {gameState.level}
           </p>
         </div>
-
         {/* Échec Kanji */}
         {failedKanji ? (
           <div className="bg-gray-900/60 rounded-xl p-6 text-center mb-6">
@@ -125,7 +129,6 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
             <p className="text-gray-400">Impossible de retrouver ce kanji dans la base.</p>
           </div>
         )}
-
         {/* Top scores JLPT */}
         <div className="bg-gray-900/60 rounded-xl p-4 mb-4">
           <h3 className="text-sm font-bold mb-2 text-yellow-300">
@@ -144,7 +147,6 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
                 ))}
           </ol>
         </div>
-
         {/* Choix de l'action */}
         <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
           <button

@@ -1,11 +1,11 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { GameMode, GameSpeed, KanjiLevel } from '../types';
-import { Rocket, Brain, Zap, ScrollText, BookOpen, User, LogIn } from 'lucide-react';
+import { Rocket, Brain, Zap, ScrollText, BookOpen, User, LogIn, Monitor, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface MainMenuProps {
-  onStart: (mode: GameMode, speed: GameSpeed, level: KanjiLevel) => void;
+  onStart: (mode: GameMode, speed: GameSpeed, level: KanjiLevel, isMobileVersion?: boolean) => void;
   onRevision: (level: KanjiLevel) => void;
   onShowProfile: () => void;
 }
@@ -15,6 +15,7 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
   const [mode, setMode] = React.useState<GameMode>('onYomi');
   const [speed, setSpeed] = React.useState<GameSpeed>('normal');
   const [level, setLevel] = React.useState<KanjiLevel>('N5');
+  const [gameVersion, setGameVersion] = React.useState<'web' | 'mobile'>('web');
   const audioRef = React.useRef<HTMLAudioElement>(null);
   
 
@@ -133,6 +134,41 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
           
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
+              <Monitor size={18} /> Version de jeu
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setGameVersion('web')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all touch-manipulation ${
+                  gameVersion === 'web'
+                    ? 'border-sky-500 bg-sky-500/20 text-sky-300'
+                    : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Monitor size={18} />
+                <span className="text-sm font-medium">Web</span>
+              </button>
+              <button
+                onClick={() => setGameVersion('mobile')}
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all touch-manipulation ${
+                  gameVersion === 'mobile'
+                    ? 'border-green-500 bg-green-500/20 text-green-300'
+                    : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                }`}
+              >
+                <Smartphone size={18} />
+                <span className="text-sm font-medium">Mobile</span>
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 text-center">
+              {gameVersion === 'web' 
+                ? 'Trajectoires multiples, idéal pour PC/tablette' 
+                : 'Kanji de face uniquement, optimisé mobile'}
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300 flex items-center gap-2">
               <Zap size={18} /> Vitesse
             </label>
             <select
@@ -156,7 +192,7 @@ export function MainMenu({ onStart, onRevision, onShowProfile }: MainMenuProps) 
           
           {/* BOUTON DE JEU */}
           <button
-            onClick={() => onStart(mode, speed, level)}
+            onClick={() => onStart(mode, speed, level, gameVersion === 'mobile')}
             className="w-full bg-gradient-to-r from-sky-500 to-blue-600 text-white px-6 py-4 rounded-lg hover:from-sky-600 hover:to-blue-700 transform hover:scale-105 active:scale-95 transition-all duration-200 font-bold text-base sm:text-lg touch-manipulation"
           >
             {currentUser ? 'Commencer la mission' : 'Se connecter pour jouer'}

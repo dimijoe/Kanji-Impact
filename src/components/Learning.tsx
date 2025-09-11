@@ -1,5 +1,8 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { kanjis } from "../data/kanjis";
+import { useAuth } from "../contexts/AuthContext";
+import { GameService } from "../services/gameService";
+import { KanjiAttempt } from "../types";
 import { 
   ScrollText, ChevronLeft, ChevronRight, 
   ChevronLeft as ChevronDoubleLeft, 
@@ -22,6 +25,10 @@ export function Learning({ onBack }: LearningProps) {
   const [search, setSearch] = useState("");
   const [searchMode, setSearchMode] = useState<"meaning"|"onYomi"|"kunYomi">("meaning");
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [kanjiAttempts, setKanjiAttempts] = useState<KanjiAttempt[]>([]);
+  const [loadingAttempts, setLoadingAttempts] = useState(false);
+  
+  const { currentUser } = useAuth();
 
   // --- FILTRE FINAL : 
   // - Si recherche non vide : recherche sur tout le corpus (non filtré par niveau)
@@ -52,6 +59,29 @@ export function Learning({ onBack }: LearningProps) {
   }, [filteredKanjis.length, currentIdx]);
 
   const currentKanji = filteredKanjis.length > 0 ? filteredKanjis[currentIdx] : null;
+
+  // Charger les tentatives pour le kanji actuel
+  useEffect(() => {
+    const loadKanjiAttempts = async () => {
+      if (!currentKanji || !currentUser) {
+        setKanjiAttempts([]);
+        return;
+      }
+      
+      setLoadingAttempts(true);
+      try {
+        const attempts = await GameService.getKanjiAttempts(currentUser.uid, currentKanji.id, 5);
+        setKanjiAttempts(attempts);
+      } catch (error) {
+        console.error('Erreur lors du chargement des tentatives:', error);
+        setKanjiAttempts([]);
+      } finally {
+        setLoadingAttempts(false);
+      }
+    };
+
+    loadKanjiAttempts();
+  }, [currentKanji, currentUser]);
 
   // Navigation
   const goto = (dir: "first" | "prev" | "next" | "last") => {
@@ -200,6 +230,54 @@ export function Learning({ onBack }: LearningProps) {
                   {filteredKanjis.length}
                 </span>
               </div>
+              
+              {/* Historique des 5 dernières tentatives */}
+              {currentUser && (
+                <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                    🎯 Mes 5 derniers résultats
+                    {loadingAttempts && <span className="text-xs text-blue-400">Chargement...</span>}
+                  </h4>
+                  <div className="flex justify-center gap-2">
+                    {kanjiAttempts.length === 0 && !loadingAttempts ? (
+                      <span className="text-xs text-gray-500 italic">Aucune tentative encore</span>
+                    ) : (
+                      // Afficher les 5 derniers résultats de droite à gauche (plus récent à droite)
+                      [...Array(5)].map((_, index) => {
+                        const attemptIndex = 4 - index; // Inverser l'ordre pour afficher de droite à gauche
+                        const attempt = kanjiAttempts[attemptIndex];
+                        
+                        if (!attempt) {
+                          return (
+                            <div
+                              key={index}
+                              className="w-4 h-4 rounded-full border-2 border-gray-600 bg-gray-700/50"
+                              title="Pas encore tenté"
+                            />
+                          );
+                        }
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={`w-4 h-4 rounded-full border-2 ${
+                              attempt.isCorrect
+                                ? 'bg-green-500 border-green-400'
+                                : 'bg-red-500 border-red-400'
+                            }`}
+                            title={`${attempt.isCorrect ? 'Succès' : 'Échec'} - ${attempt.attemptedAt.toLocaleDateString()}`}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                  {kanjiAttempts.length > 0 && (
+                    <div className="text-xs text-gray-400 text-center mt-2">
+                      Taux de réussite: {Math.round((kanjiAttempts.filter(a => a.isCorrect).length / kanjiAttempts.length) * 100)}%
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

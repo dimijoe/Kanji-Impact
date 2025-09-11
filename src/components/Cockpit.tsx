@@ -17,13 +17,16 @@ function getRandomTrajectory(): Trajectory {
   if (r < 0.67) return "right";
   return "center";
 }
+
 interface CockpitProps {
   gameState: GameState;
   onAnswer: (answer: string) => void;
   onMenu?: () => void;
+  onGameOver?: () => void;
+  isMobileVersion?: boolean;
 }
 
-export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
+export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersion = false }: CockpitProps) {
   const [input, setInput] = useState("");
   const [kanjiZ, setKanjiZ] = useState(0);
   const [kanjiArrive, setKanjiArrive] = useState(false);
@@ -34,15 +37,16 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
   const [screenShake, setScreenShake] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [cockpitExplode, setCockpitExplode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const animRef = useRef<number>();
   const startTimeRef = useRef<number | null>(null);
   const elapsedRef = useRef<number>(0);
   const { score, currentKanji } = gameState;
   const DURATION_BY_SPEED = useMemo(() => ({
-    training: 10,
+    slow: 10,
     normal: 7,
-    expert: 5,
+    fast: 5,
   }), []);
   const duration =
     DURATION_BY_SPEED[
@@ -53,33 +57,44 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
 
   useEffect(() => {
     if (!currentKanji) return;
-    let trajectory: Trajectory = getRandomTrajectory();
-    setLaserDirection(trajectory);
-    let startPos, endPos;
-    if (trajectory === "center") {
-      startPos = { x: 0.5, y: 0.06 };
-      endPos = { x: 0.5, y: 0.38 };
-    } else if (trajectory === "left") {
-      startPos = { x: 0.13, y: 0.16 };
-      endPos = { x: 0.34, y: 0.43 };
+    
+    if (isMobileVersion) {
+      // Version mobile : kanji arrive de face uniquement
+      setKanjiStart({ x: 0.5, y: 0.06 });
+      setKanjiEnd({ x: 0.5, y: 0.38 });
+      setLaserDirection("center");
     } else {
-      startPos = { x: 0.87, y: 0.16 };
-      endPos = { x: 0.66, y: 0.43 };
+      // Version web : trajectoires multiples
+      let trajectory: Trajectory = getRandomTrajectory();
+      setLaserDirection(trajectory);
+      let startPos, endPos;
+      if (trajectory === "center") {
+        startPos = { x: 0.5, y: 0.06 };
+        endPos = { x: 0.5, y: 0.38 };
+      } else if (trajectory === "left") {
+        startPos = { x: 0.13, y: 0.16 };
+        endPos = { x: 0.34, y: 0.43 };
+      } else {
+        startPos = { x: 0.87, y: 0.16 };
+        endPos = { x: 0.66, y: 0.43 };
+      }
+      setKanjiStart(startPos);
+      setKanjiEnd(endPos);
     }
-    setKanjiStart(startPos);
-    setKanjiEnd(endPos);
+    
     setKanjiZ(0);
     setKanjiArrive(false);
     setKanjiExplode(false);
     setKanjiMissed(false);
     setShowLaser(false);
     setScreenShake(false);
+    setCockpitExplode(false);
     setInput("");
     setTimeLeft(duration);
     if (inputRef.current) inputRef.current.focus();
     elapsedRef.current = 0;
     startTimeRef.current = null;
-  }, [currentKanji, gameState.speed, duration]);
+  }, [currentKanji, gameState.speed, duration, isMobileVersion]);
 
   useEffect(() => {
     if (!currentKanji) return;
@@ -98,9 +113,22 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
       if (progress >= 1) {
         setKanjiArrive(true);
         setKanjiExplode(true);
+        setCockpitExplode(true);
         setScreenShake(true);
+        
+        // Jouer le son d'explosion
+        playSound('/audio/Sound_explosion.mp3');
+        
+        // Afficher Game Over quasi instantanément après l'explosion
+        setTimeout(() => {
+          if (onGameOver) {
+            onGameOver();
+          }
+        }, 300); // 300ms pour voir l'explosion puis Game Over
+        
         setTimeout(() => {
           setKanjiExplode(false);
+          setCockpitExplode(false);
           setScreenShake(false);
         }, 600);
       } else {
@@ -119,7 +147,7 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
         startTimeRef.current = null;
       }
     };
-  }, [currentKanji, duration, isPaused]);
+  }, [currentKanji, duration, isPaused, onGameOver]);
 
   const handlePauseToggle = () => setIsPaused(p => !p);
   useEffect(() => {
@@ -190,6 +218,11 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
   const mainStyle: React.CSSProperties = screenShake
     ? { animation: "screenShake 0.36s cubic-bezier(.23,1.85,.42,-0.2) 2" }
     : {};
+
+  // Calcul de la taille du kanji pour l'effet de rapprochement (version mobile)
+  const kanjiScale = isMobileVersion 
+    ? 0.3 + 2.0 * kanjiZ // Effet de rapprochement plus prononcé
+    : 0.18 + 1.25 * kanjiZ;
 
   return (
     <div
@@ -269,14 +302,14 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
         </div>
       )}
 
-      {/* Kanji animé - Taille responsive */}
+      {/* Kanji animé - Taille responsive avec effet de rapprochement */}
       {currentKanji && (
         <div
           style={{
             position: "absolute",
             left: `calc(${kanjiPos.x * 100}% )`,
             top: `calc(${kanjiPos.y * 100}%)`,
-            transform: `translate(-50%, -50%) scale(${0.18 + 1.25 * kanjiZ}${kanjiExplode ? ",1.46" : ""})`,
+            transform: `translate(-50%, -50%) scale(${kanjiScale}${kanjiExplode ? ",1.46" : ""})`,
             zIndex: 11,
             pointerEvents: "none",
             opacity: kanjiExplode ? 0 : kanjiArrive ? 1 : 0.98,
@@ -322,6 +355,7 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
       <CockpitDashboard
         kanjiExplode={kanjiExplode}
         screenShake={screenShake}
+        cockpitExplode={cockpitExplode}
       />
 
       {/* Interface de saisie - Complètement responsive */}
@@ -360,6 +394,7 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
           <div className="mt-3 text-center">
             <span className="text-xs text-gray-400 bg-gray-800/50 px-3 py-1 rounded-full">
               Mode: {gameState.mode === 'onYomi' ? "On'yomi" : gameState.mode === 'kunYomi' ? "Kun'yomi" : "Signification"}
+              {isMobileVersion && <span className="ml-2 text-green-400">📱 Mobile</span>}
             </span>
           </div>
         </form>
@@ -380,6 +415,11 @@ export function Cockpit({ gameState, onAnswer, onMenu }: CockpitProps) {
           30%{opacity: .25;}
           70%{opacity: .18;}
           100%{opacity:0;}
+        }
+        @keyframes cockpitExplosion {
+          0% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(1.1); filter: brightness(2) drop-shadow(0 0 50px #ff6b35); }
+          100% { transform: scale(1); filter: brightness(1); }
         }
         `}
       </style>
@@ -475,19 +515,24 @@ function ExplosionSVG() {
   );
 }
 
-function CockpitDashboard({ kanjiExplode, screenShake }: { kanjiExplode: boolean, screenShake: boolean }) {
+function CockpitDashboard({ kanjiExplode, screenShake, cockpitExplode }: { 
+  kanjiExplode: boolean, 
+  screenShake: boolean,
+  cockpitExplode: boolean 
+}) {
   return (
     <div
       className="absolute left-0 bottom-0 w-full h-32 sm:h-40 md:h-48 z-10 flex flex-row items-end justify-between px-4 pb-4"
       style={{
         background: "linear-gradient(180deg,#253f69 55%,#22365f 90%,#141924 100%)",
-        boxShadow: kanjiExplode
+        boxShadow: kanjiExplode || cockpitExplode
           ? "0 0 45px 25px #fff3, 0 0 70px 12px #ff9603c1"
           : "0 0 35px #16e6e6a9",
-        filter: screenShake
+        filter: screenShake || cockpitExplode
           ? "brightness(1.07) blur(1.5px)"
           : "none",
-        transition: "filter .21s, box-shadow .28s"
+        transition: "filter .21s, box-shadow .28s",
+        animation: cockpitExplode ? "cockpitExplosion 0.6s ease-out" : "none"
       }}
     >
       {/* Radar gauche */}

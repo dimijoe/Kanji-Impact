@@ -1,8 +1,35 @@
 import { collection, addDoc, query, where, orderBy, limit, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { GameSession, UserProfile, Badge, Achievement, KanjiLevel } from '../types';
+import { GameSession, UserProfile, Badge, Achievement, KanjiLevel, KanjiAttempt } from '../types';
 
 export class GameService {
+  // Enregistrer une tentative sur un kanji spécifique
+  static async saveKanjiAttempt(attempt: Omit<KanjiAttempt, 'id'>): Promise<string> {
+    const docRef = await addDoc(collection(db, 'kanjiAttempts'), {
+      ...attempt,
+      attemptedAt: new Date()
+    });
+    return docRef.id;
+  }
+
+  // Récupérer les 5 dernières tentatives pour un kanji spécifique
+  static async getKanjiAttempts(userId: string, kanjiId: string, limitCount: number = 5): Promise<KanjiAttempt[]> {
+    const q = query(
+      collection(db, 'kanjiAttempts'),
+      where('userId', '==', userId),
+      where('kanjiId', '==', kanjiId),
+      orderBy('attemptedAt', 'desc'),
+      limit(limitCount)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      attemptedAt: doc.data().attemptedAt.toDate()
+    })) as KanjiAttempt[];
+  }
+
   static async saveGameSession(session: Omit<GameSession, 'id'>): Promise<string> {
     const docRef = await addDoc(collection(db, 'gameSessions'), {
       ...session,

@@ -36,6 +36,7 @@ function GameApp() {
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('menu');
   const [gameStartTime, setGameStartTime] = useState<Date | null>(null);
+  const [isMobileVersion, setIsMobileVersion] = useState(false);
 
   // Redirect to auth if not logged in and trying to play
   useEffect(() => {
@@ -76,6 +77,10 @@ function GameApp() {
     }
   }, [currentScreen, gameState.gameOver, gameState.speed, gameState.level, gameState.destroyedKanjis]);
 
+  const handleGameOver = () => {
+    setGameState(prev => ({ ...prev, gameOver: true }));
+  };
+
   const handleAnswer = (answer: string) => {
     if (!gameState.currentKanji) return;
 
@@ -86,6 +91,30 @@ function GameApp() {
       : gameState.mode === 'onYomi'
         ? gameState.currentKanji.onYomi.includes(answer)
         : gameState.currentKanji.kunYomi.includes(answer);
+
+    // Enregistrer la tentative sur ce kanji spécifique
+    if (currentUser) {
+      const correctAnswers = gameState.mode === 'meaning'
+        ? gameState.currentKanji.meanings
+        : gameState.mode === 'onYomi'
+          ? gameState.currentKanji.onYomi
+          : gameState.currentKanji.kunYomi;
+
+      const kanjiAttempt = {
+        userId: currentUser.uid,
+        kanjiId: gameState.currentKanji.id,
+        kanjiCharacter: gameState.currentKanji.character,
+        mode: gameState.mode,
+        userAnswer: answer,
+        correctAnswer: correctAnswers,
+        isCorrect,
+        attemptedAt: new Date()
+      };
+
+      GameService.saveKanjiAttempt(kanjiAttempt).catch(error => {
+        console.error('Erreur lors de l\'enregistrement de la tentative:', error);
+      });
+    }
 
     if (isCorrect) {
       const newCorrectAnswers = gameState.correctAnswers + 1;
@@ -115,11 +144,12 @@ function GameApp() {
     }
   };
 
-  const handleStart = (mode: GameMode, speed: GameSpeed, level: KanjiLevel) => {
+  const handleStart = (mode: GameMode, speed: GameSpeed, level: KanjiLevel, isMobileVersion: boolean = false) => {
     if (!currentUser) {
       return;
     }
     
+    setIsMobileVersion(isMobileVersion);
     setGameState({ ...INITIAL_STATE, mode, speed, level, destroyedKanjis: new Set() });
     setGameStartTime(new Date());
     setCurrentScreen('game');
@@ -189,7 +219,13 @@ function GameApp() {
       )}
 
       {currentScreen === 'game' && (
-        <Cockpit gameState={gameState} onAnswer={handleAnswer} onMenu={handleBackToMenu} />
+        <Cockpit 
+          gameState={gameState} 
+          onAnswer={handleAnswer} 
+          onMenu={handleBackToMenu}
+          onGameOver={handleGameOver}
+          isMobileVersion={isMobileVersion}
+        />
       )}
 
       {gameState.gameOver && (

@@ -60,6 +60,19 @@ export interface GameSession {
   completedAt: Date;
 }
 
+export interface KanjiAttempt {
+  id?: string;
+  userId: string;
+  kanjiId: string;
+  kanjiCharacter: string;
+  mode: GameMode;
+  userAnswer: string;
+  correctAnswer: string[];
+  isCorrect: boolean;
+  attemptedAt: Date;
+  gameSessionId?: string;
+}
+
 export interface GameState {
   score: number;
   shields: number;

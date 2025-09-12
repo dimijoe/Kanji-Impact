@@ -41,7 +41,7 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
   const animRef = useRef<number>();
   const startTimeRef = useRef<number | null>(null);
   const elapsedRef = useRef<number>(0);
-  const { score, currentKanji } = gameState;
+  const [currentKanjiIndex, setCurrentKanjiIndex] = useState(0);
   const DURATION_BY_SPEED = useMemo(() => ({
     slow: 10,
     normal: 7,

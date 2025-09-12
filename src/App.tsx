@@ -13,7 +13,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 const INITIAL_STATE: GameState = {
   score: 0,
-  shields: 3,
+  errorsAllowed: 3,
+  errorsUsed: 0,
   gameOver: false,
   currentKanji: null,
   mode: 'onYomi',
@@ -22,6 +23,10 @@ const INITIAL_STATE: GameState = {
   destroyedKanjis: new Set(),
   correctAnswers: 0,
   totalAttempts: 0,
+  missionTarget: 10,
+  kanjiQueue: [],
+  completedKanjis: 0,
+  missionCompleted: false,
 };
 
 type AppScreen = 'menu' | 'game' | 'learning';
@@ -31,6 +36,30 @@ const SPEED_MAP = {
   normal: 5000,
   fast: 3000,
 };
+
+// Fonction pour mélanger un tableau (Fisher-Yates shuffle)
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Fonction pour créer une queue de kanjis aléatoires
+function createKanjiQueue(level: KanjiLevel, targetCount: number): string[] {
+  const levelKanjis = kanjis.filter(k => k.group === level);
+  const queue: string[] = [];
+  
+  // Si on a besoin de plus de kanjis que disponibles, on répète la liste
+  while (queue.length < targetCount) {
+    const shuffledKanjis = shuffleArray(levelKanjis.map(k => k.id));
+    queue.push(...shuffledKanjis);
+  }
+  
+  return queue.slice(0, targetCount);
+}
 
 function GameApp() {
   const { currentUser, userProfile, updateUserProfile } = useAuth();
@@ -132,23 +161,56 @@ function GameApp() {
   };
 
   // Démarrage d'une partie
-  const handleStart = (mode: GameMode, speed: GameSpeed, level: KanjiLevel, isMobileVersion: boolean = false) => {
+  const handleStart = (
+    mode: GameMode, 
+    speed: GameSpeed, 
+    level: KanjiLevel, 
+    isMobileVersion: boolean = false,
+    missionTarget: number = 10,
+    errorsAllowed: number = 3
+  ) => {
     if (!currentUser) {
       return;
     }
     setIsMobileVersion(isMobileVersion);
-    setGameState({ ...INITIAL_STATE, mode, speed, level, destroyedKanjis: new Set() });
+    
+    // Créer une queue de kanjis aléatoires
+    const kanjiQueue = createKanjiQueue(level, missionTarget * 2); // Plus de kanjis que nécessaire
+    
+    setGameState({ 
+      ...INITIAL_STATE, 
+      mode, 
+      speed, 
+      level, 
+      missionTarget,
+      errorsAllowed,
+      errorsUsed: 0,
+      kanjiQueue,
+      destroyedKanjis: new Set(),
+      completedKanjis: 0,
+      missionCompleted: false
+    });
     setGameStartTime(new Date());
     setCurrentScreen('game');
   };
 
   // Relancer une partie
   const handleRestart = () => {
-    setGameState({ ...INITIAL_STATE, 
+    // Créer une nouvelle queue de kanjis aléatoires
+    const kanjiQueue = createKanjiQueue(gameState.level, gameState.missionTarget * 2);
+    
+    setGameState({ 
+      ...INITIAL_STATE, 
       mode: gameState.mode, 
       speed: gameState.speed, 
       level: gameState.level,
-      destroyedKanjis: new Set()
+      missionTarget: gameState.missionTarget,
+      errorsAllowed: gameState.errorsAllowed,
+      errorsUsed: 0,
+      kanjiQueue,
+      destroyedKanjis: new Set(),
+      completedKanjis: 0,
+      missionCompleted: false
     });
     setGameStartTime(new Date());
     setCurrentScreen('game');

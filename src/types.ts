@@ -75,7 +75,8 @@ export interface KanjiAttempt {
 
 export interface GameState {
   score: number;
-  shields: number;
+  errorsAllowed: number;
+  errorsUsed: number;
   gameOver: boolean;
   currentKanji: Kanji | null;
   mode: GameMode;
@@ -84,6 +85,10 @@ export interface GameState {
   destroyedKanjis: Set<string>;
   correctAnswers: number;
   totalAttempts: number;
+  missionTarget: number;
+  kanjiQueue: string[];
+  completedKanjis: number;
+  missionCompleted: boolean;
 }
 
 export type GameMode = 'onYomi' | 'kunYomi' | 'meaning';

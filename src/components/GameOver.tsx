@@ -116,6 +116,12 @@ export function GameOver({ gameState, onRestart, onMenu, onAfterSave }: GameOver
           <p className="text-2xl mb-2 font-semibold">
             Score&nbsp;: <span className="text-sky-400">{gameState.score}</span>
           </p>
+          <p className="text-lg mb-2">
+            Mission : <span className="text-green-400">{gameState.completedKanjis}</span>/{gameState.missionTarget} kanjis
+          </p>
+          <p className="text-lg mb-2">
+            Erreurs : <span className="text-red-400">{gameState.errorsUsed}</span>/{gameState.errorsAllowed}
+          </p>
           <p className="text-lg text-gray-300">
             Mode : {gameState.mode === 'onYomi' ? "On'yomi" : gameState.mode === 'kunYomi' ? "Kun'yomi" : "Signification"}
             &nbsp;| Vitesse : {gameState.speed} &nbsp;| Niveau : {gameState.level}

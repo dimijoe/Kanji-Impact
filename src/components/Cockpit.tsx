@@ -241,13 +241,24 @@ export function Cockpit({ gameState, onAnswer, onMenu, onGameOver, isMobileVersi
       
       {/* Score et temps */}
       <div className="absolute top-2 left-2 right-2 flex justify-between items-center z-30">
-        <div className="bg-black/50 rounded-lg px-3 py-2 text-white">
-          <div className="text-xs sm:text-sm text-gray-300">Score</div>
-          <div className="text-lg sm:text-xl font-bold text-sky-400">{score}</div>
+        <div className="bg-black/50 rounded-lg px-2 py-1 text-white text-center min-w-[80px]">
+          <div className="text-xs text-gray-300">Score</div>
+          <div className="text-sm sm:text-lg font-bold text-sky-400">{score}</div>
         </div>
-        <div className="bg-black/50 rounded-lg px-3 py-2 text-white">
-          <div className="text-xs sm:text-sm text-gray-300">Temps</div>
-          <div className="text-lg sm:text-xl font-bold text-orange-400">{timeLeft}s</div>
+        
+        <div className="bg-black/50 rounded-lg px-2 py-1 text-white text-center">
+          <div className="text-xs text-gray-300">Mission</div>
+          <div className="text-sm font-bold text-green-400">{completedKanjis}/{missionTarget}</div>
+        </div>
+        
+        <div className="bg-black/50 rounded-lg px-2 py-1 text-white text-center">
+          <div className="text-xs text-gray-300">Erreurs</div>
+          <div className="text-sm font-bold text-red-400">{errorsUsed}/{errorsAllowed}</div>
+        </div>
+        
+        <div className="bg-black/50 rounded-lg px-2 py-1 text-white text-center min-w-[60px]">
+          <div className="text-xs text-gray-300">Temps</div>
+          <div className="text-sm sm:text-lg font-bold text-orange-400">{timeLeft}s</div>
         </div>
       </div>
       {/* Boutons de contrôle */}

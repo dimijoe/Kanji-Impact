@@ -1,128 +1,172 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plane, Target, Clock, Trophy, AlertTriangle, Zap } from 'lucide-react';
-import { Kanji, GameMode, GameSettings } from '../types';
+import { GameState, Kanji } from '../types';
+import { kanjis } from '../data/kanjis';
+import { 
+  Rocket, Target, Clock, Trophy, AlertTriangle, Zap, 
+  Home, Plane 
+} from 'lucide-react';
 
 interface CockpitProps {
-  kanjis: Kanji[];
-  mode: GameMode;
+  gameState: GameState;
   onAnswer: (answer: string) => void;
+  onMenu: () => void;
   onGameOver: () => void;
-  gameSettings: GameSettings;
-  isMobileVersion: boolean;
+  isMobileVersion?: boolean;
 }
 
-export const Cockpit: React.FC<CockpitProps> = ({ 
-  kanjis, 
-  mode, 
+export function Cockpit({ 
+  gameState, 
   onAnswer, 
+  onMenu, 
   onGameOver,
-  gameSettings,
-  isMobileVersion 
-}) => {
-  const [currentKanjiIndex, setCurrentKanjiIndex] = useState(0);
+  isMobileVersion = false 
+}: CockpitProps) {
   const [answer, setAnswer] = useState('');
-  const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [currentKanji, setCurrentKanji] = useState<Kanji | null>(null);
+  const [kanjiPosition, setKanjiPosition] = useState({ x: 50, y: 10 });
   const [isExploding, setIsExploding] = useState(false);
-  const [successCount, setSuccessCount] = useState(0);
-  const [errorCount, setErrorCount] = useState(0);
-  const [kanjiQueue, setKanjiQueue] = useState<Kanji[]>([]);
-  const [queueIndex, setQueueIndex] = useState(0);
+  const [cockpitExploding, setCockpitExploding] = useState(false);
+  const [kanjiMissed, setKanjiMissed] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement>(null);
+  const explosionRef = useRef<HTMLAudioElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fisher-Yates shuffle algorithm
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
+  // Speed mapping
+  const SPEED_MAP = {
+    slow: 150,
+    normal: 100,
+    fast: 60,
   };
 
-  // Initialize shuffled queue
+  // Get next kanji from queue
+  const getNextKanji = () => {
+    if (gameState.kanjiQueue.length === 0) return null;
+    
+    const kanjiId = gameState.kanjiQueue[0];
+    const kanji = kanjis.find(k => k.id === kanjiId);
+    return kanji || null;
+  };
+
+  // Initialize kanji
   useEffect(() => {
-    if (kanjis.length > 0) {
-      const shuffled = shuffleArray(kanjis);
-      setKanjiQueue(shuffled);
-      setQueueIndex(0);
+    const nextKanji = getNextKanji();
+    if (nextKanji) {
+      setCurrentKanji(nextKanji);
+      // Reset position for new kanji
+      if (isMobileVersion) {
+        setKanjiPosition({ x: 50, y: 10 });
+      } else {
+        // Random starting position for web version
+        setKanjiPosition({ 
+          x: Math.random() * 80 + 10, 
+          y: 10 
+        });
+      }
     }
-  }, [kanjis]);
+  }, [gameState.kanjiQueue, isMobileVersion]);
 
-  // Timer
+  // Kanji movement animation
   useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      onGameOver();
-    }
-  }, [timeLeft, onGameOver]);
+    if (!currentKanji || gameState.gameOver || isExploding || kanjiMissed) return;
 
-  // Check mission completion
-  useEffect(() => {
-    if (successCount >= gameSettings.targetKanjis) {
-      onGameOver();
-    }
-  }, [successCount, gameSettings.targetKanjis, onGameOver]);
+    const speed = SPEED_MAP[gameState.speed];
+    
+    intervalRef.current = setInterval(() => {
+      setKanjiPosition(prev => {
+        const newY = prev.y + 2;
+        
+        // Check if kanji reached the cockpit (bottom)
+        if (newY >= 85) {
+          // Kanji missed - consume error
+          setKanjiMissed(true);
+          setCockpitExploding(true);
+          
+          // Play explosion sound
+          if (explosionRef.current) {
+            explosionRef.current.currentTime = 0;
+            explosionRef.current.play().catch(console.error);
+          }
 
-  // Check max errors reached
-  useEffect(() => {
-    if (errorCount >= gameSettings.maxErrors) {
-      onGameOver();
-    }
-  }, [errorCount, gameSettings.maxErrors, onGameOver]);
+          // Trigger game over after explosion if no errors left
+          setTimeout(() => {
+            onAnswer(''); // Empty answer = missed kanji
+            setCockpitExploding(false);
+            setKanjiMissed(false);
+            
+            // Check if game should end
+            if (gameState.errorsUsed + 1 >= gameState.errorsAllowed) {
+              setTimeout(() => onGameOver(), 300);
+            }
+          }, 500);
+          
+          return prev;
+        }
+        
+        return { ...prev, y: newY };
+      });
+    }, speed);
 
-  const currentKanji = kanjiQueue[queueIndex % kanjiQueue.length];
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [currentKanji, gameState.speed, gameState.gameOver, isExploding, kanjiMissed, gameState.errorsUsed, gameState.errorsAllowed, onAnswer, onGameOver]);
 
+  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!answer.trim() || !currentKanji) return;
+    if (!answer.trim() || !currentKanji || isExploding || kanjiMissed) return;
 
-    const correctAnswers = currentKanji[mode] || [];
+    // Check if answer is correct
+    const correctAnswers = gameState.mode === 'meaning'
+      ? currentKanji.meanings.map(m => m.toLowerCase())
+      : gameState.mode === 'onYomi'
+        ? currentKanji.onYomi.map(o => o.replace(/\(.*?\)/g, '').trim())
+        : currentKanji.kunYomi.map(k => k.replace(/\(.*?\)/g, '').trim());
+
     const isCorrect = correctAnswers.some(correct => 
       correct.toLowerCase() === answer.toLowerCase().trim()
     );
 
     if (isCorrect) {
-      setScore(prev => prev + 100);
-      setSuccessCount(prev => prev + 1);
+      // Correct answer - explode kanji
       setIsExploding(true);
       
-      // Play explosion sound
+      // Play success sound
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(console.error);
       }
 
       setTimeout(() => {
+        onAnswer(answer);
         setIsExploding(false);
-        nextKanji();
+        setAnswer('');
       }, 500);
     } else {
-      // Wrong answer - kanji passes through, consume error
-      setScore(prev => prev - 50);
-      setErrorCount(prev => prev + 1);
-      nextKanji();
+      // Wrong answer - let kanji continue falling
+      setAnswer('');
     }
-
-    onAnswer(answer);
-    setAnswer('');
   };
 
-  const nextKanji = () => {
-    if (kanjiQueue.length === 0) return;
-    
-    // Move to next kanji in shuffled queue
-    const nextIndex = queueIndex + 1;
-    
-    // If we've gone through all kanjis, reshuffle
-    if (nextIndex >= kanjiQueue.length) {
-      const reshuffled = shuffleArray(kanjis);
-      setKanjiQueue(reshuffled);
-      setQueueIndex(0);
-    } else {
-      setQueueIndex(nextIndex);
+  // Get mode label and prompt
+  const getModeLabel = () => {
+    switch (gameState.mode) {
+      case 'onYomi': return 'On\'yomi';
+      case 'kunYomi': return 'Kun\'yomi';
+      case 'meaning': return 'Signification';
+      default: return gameState.mode;
+    }
+  };
+
+  const getModePrompt = () => {
+    switch (gameState.mode) {
+      case 'onYomi': return 'Lecture chinoise :';
+      case 'kunYomi': return 'Lecture japonaise :';
+      case 'meaning': return 'Signification :';
+      default: return 'Réponse :';
     }
   };
 
@@ -134,28 +178,14 @@ export const Cockpit: React.FC<CockpitProps> = ({
     );
   }
 
-  const getModeLabel = () => {
-    switch (mode) {
-      case 'onYomi': return 'On\'yomi';
-      case 'kunYomi': return 'Kun\'yomi';
-      case 'meaning': return 'Signification';
-      default: return mode;
-    }
-  };
-
-  const getModePrompt = () => {
-    switch (mode) {
-      case 'onYomi': return 'Lecture chinoise :';
-      case 'kunYomi': return 'Lecture japonaise :';
-      case 'meaning': return 'Signification :';
-      default: return 'Réponse :';
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-700 to-blue-500 relative overflow-hidden">
+      {/* Audio elements */}
       <audio ref={audioRef} preload="auto">
-        <source src="/explosion.mp3" type="audio/mpeg" />
+        <source src="/audio/Sound_explosion.mp3" type="audio/mpeg" />
+      </audio>
+      <audio ref={explosionRef} preload="auto">
+        <source src="/audio/Sound_explosion.mp3" type="audio/mpeg" />
       </audio>
 
       {/* Mobile version indicator */}
@@ -167,6 +197,17 @@ export const Cockpit: React.FC<CockpitProps> = ({
         </div>
       )}
 
+      {/* Menu button */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+        <button
+          onClick={onMenu}
+          className="bg-gray-700/80 hover:bg-gray-600/80 text-white p-3 rounded-full transition-colors flex items-center gap-2 touch-manipulation"
+          title="Retour au menu"
+        >
+          <Home size={20} />
+        </button>
+      </div>
+
       {/* Game Stats Header */}
       <div className="absolute top-4 right-4 z-20">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-white">
@@ -176,7 +217,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
               <Trophy className="w-4 h-4" />
               <span className="text-xs font-medium">Score</span>
             </div>
-            <div className="text-lg font-bold">{score}</div>
+            <div className="text-lg font-bold">{gameState.score}</div>
           </div>
 
           {/* Mission Progress */}
@@ -185,7 +226,7 @@ export const Cockpit: React.FC<CockpitProps> = ({
               <Target className="w-4 h-4" />
               <span className="text-xs font-medium">Mission</span>
             </div>
-            <div className="text-lg font-bold">{successCount}/{gameSettings.targetKanjis}</div>
+            <div className="text-lg font-bold">{gameState.completedKanjis}/{gameState.missionTarget}</div>
           </div>
 
           {/* Errors */}
@@ -194,29 +235,65 @@ export const Cockpit: React.FC<CockpitProps> = ({
               <AlertTriangle className="w-4 h-4" />
               <span className="text-xs font-medium">Erreurs</span>
             </div>
-            <div className="text-lg font-bold">{errorCount}/{gameSettings.maxErrors}</div>
+            <div className="text-lg font-bold">{gameState.errorsUsed}/{gameState.errorsAllowed}</div>
           </div>
 
-          {/* Time */}
-          <div className="bg-orange-600/80 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
+          {/* Level */}
+          <div className="bg-purple-600/80 backdrop-blur-sm rounded-lg px-3 py-2 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Clock className="w-4 h-4" />
-              <span className="text-xs font-medium">Temps</span>
+              <Rocket className="w-4 h-4" />
+              <span className="text-xs font-medium">Niveau</span>
             </div>
-            <div className="text-lg font-bold">{timeLeft}s</div>
+            <div className="text-lg font-bold">{gameState.level}</div>
           </div>
         </div>
       </div>
 
+      {/* Kanji Display */}
+      <div 
+        className="absolute transition-all duration-100 ease-linear"
+        style={{
+          left: `${kanjiPosition.x}%`,
+          top: `${kanjiPosition.y}%`,
+          transform: 'translate(-50%, -50%)'
+        }}
+      >
+        <div className={`transition-all duration-300 ${
+          isExploding 
+            ? 'animate-ping scale-150 opacity-0' 
+            : isMobileVersion 
+              ? `scale-${Math.min(150 + kanjiPosition.y * 2, 300)}` // Face approach effect
+              : 'animate-pulse scale-100'
+        }`}>
+          <div className="text-6xl sm:text-8xl font-bold text-white text-center drop-shadow-2xl">
+            {currentKanji.character}
+          </div>
+        </div>
+      </div>
+
+      {/* Explosion effects */}
+      {isExploding && (
+        <div 
+          className="absolute animate-ping"
+          style={{
+            left: `${kanjiPosition.x}%`,
+            top: `${kanjiPosition.y}%`,
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <div className="w-32 h-32 bg-orange-400 rounded-full opacity-75"></div>
+        </div>
+      )}
+
       {/* Cockpit */}
       <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${
-        isExploding ? 'animate-pulse scale-110' : ''
+        cockpitExploding ? 'animate-pulse scale-110 filter brightness-200' : ''
       }`}>
         <div className="relative">
-          {/* Explosion effect */}
-          {isExploding && (
+          {/* Cockpit explosion effect */}
+          {cockpitExploding && (
             <div className="absolute inset-0 -m-8 animate-ping">
-              <div className="w-full h-full bg-orange-400 rounded-full opacity-75"></div>
+              <div className="w-full h-full bg-red-500 rounded-full opacity-75"></div>
             </div>
           )}
           
@@ -231,19 +308,6 @@ export const Cockpit: React.FC<CockpitProps> = ({
             {/* Wings */}
             <div className="absolute top-8 -left-6 w-8 h-4 sm:w-10 sm:h-5 bg-gray-700 rounded-l-full"></div>
             <div className="absolute top-8 -right-6 w-8 h-4 sm:w-10 sm:h-5 bg-gray-700 rounded-r-full"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Kanji Display */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-        <div className={`transition-all duration-1000 ${
-          isMobileVersion 
-            ? 'animate-pulse scale-150 sm:scale-200' // Mobile: face approach effect
-            : 'animate-bounce' // Web: traditional trajectory
-        }`}>
-          <div className="text-8xl sm:text-9xl font-bold text-white text-center drop-shadow-2xl">
-            {currentKanji.character}
           </div>
         </div>
       </div>
@@ -265,14 +329,14 @@ export const Cockpit: React.FC<CockpitProps> = ({
                 className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-center font-medium"
                 placeholder="Votre réponse..."
                 autoFocus
+                disabled={isExploding || kanjiMissed}
                 style={{ fontSize: '16px' }} // Prevent zoom on iOS
               />
               
               <button
                 type="submit"
-                disabled={!answer.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-lg"
-                style={{ touchAction: 'manipulation' }}
+                disabled={!answer.trim() || isExploding || kanjiMissed}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-lg touch-manipulation"
               >
                 <Zap className="w-5 h-5" />
                 Tirer !
@@ -299,4 +363,4 @@ export const Cockpit: React.FC<CockpitProps> = ({
       </div>
     </div>
   );
-};
+}

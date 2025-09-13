@@ -108,55 +108,77 @@ function GameApp() {
 
   // Gestion des réponses utilisateur
   const handleAnswer = (answer: string) => {
-    if (!gameState.currentKanji) return;
-    const newTotalAttempts = gameState.totalAttempts + 1;
-    const isCorrect = gameState.mode === 'meaning'
-      ? gameState.currentKanji.meanings.includes(answer.toLowerCase())
-      : gameState.mode === 'onYomi'
-        ? gameState.currentKanji.onYomi.includes(answer)
-        : gameState.currentKanji.kunYomi.includes(answer);
+    if (gameState.kanjiQueue.length === 0) return;
+    
+    const currentKanjiId = gameState.kanjiQueue[0];
+    const currentKanji = kanjis.find(k => k.id === currentKanjiId);
+    if (!currentKanji) return;
 
+    const newTotalAttempts = gameState.totalAttempts + 1;
+    
+    // Empty answer means kanji was missed
+    const isCorrect = answer.trim() !== '' && (gameState.mode === 'meaning'
+      ? currentKanji.meanings.some(m => m.toLowerCase() === answer.toLowerCase())
+      : gameState.mode === 'onYomi'
+        ? currentKanji.onYomi.some(o => o.replace(/\(.*?\)/g, '').trim() === answer.trim())
+        : currentKanji.kunYomi.some(k => k.replace(/\(.*?\)/g, '').trim() === answer.trim()));
+
+    // Save attempt to Firebase
     if (currentUser) {
       const correctAnswers = gameState.mode === 'meaning'
-        ? gameState.currentKanji.meanings
+        ? currentKanji.meanings
         : gameState.mode === 'onYomi'
-          ? gameState.currentKanji.onYomi
-          : gameState.currentKanji.kunYomi;
+          ? currentKanji.onYomi
+          : currentKanji.kunYomi;
+          
       const kanjiAttempt = {
         userId: currentUser.uid,
-        kanjiId: gameState.currentKanji.id,
-        kanjiCharacter: gameState.currentKanji.character,
+        kanjiId: currentKanji.id,
+        kanjiCharacter: currentKanji.character,
         mode: gameState.mode,
-        userAnswer: answer,
+        userAnswer: answer || '[missed]',
         correctAnswer: correctAnswers,
         isCorrect,
         attemptedAt: new Date()
       };
+      
       GameService.saveKanjiAttempt(kanjiAttempt).catch(error => {
         console.error('Erreur lors de l\'enregistrement de la tentative:', error);
       });
     }
 
+    // Remove current kanji from queue
+    const newKanjiQueue = gameState.kanjiQueue.slice(1);
+    
     if (isCorrect) {
+      // Correct answer
       const newCorrectAnswers = gameState.correctAnswers + 1;
-      const levelKanjis = kanjis.filter(k => k.group === gameState.level);
-      const newDestroyedKanjis = new Set(gameState.destroyedKanjis);
-      newDestroyedKanjis.add(gameState.currentKanji.id);
-      const availableKanjis = levelKanjis.filter(k => !newDestroyedKanjis.has(k.id));
-      const randomKanji = availableKanjis.length > 0 
-        ? availableKanjis[Math.floor(Math.random() * availableKanjis.length)]
-        : null;
+      const newCompletedKanjis = gameState.completedKanjis + 1;
+      const newDestroyedKanjis = new Set([...gameState.destroyedKanjis, currentKanji.id]);
+      
       setGameState((prev) => ({
         ...prev,
         score: prev.score + 100,
         correctAnswers: newCorrectAnswers,
         totalAttempts: newTotalAttempts,
-        currentKanji: randomKanji,
+        completedKanjis: newCompletedKanjis,
         destroyedKanjis: newDestroyedKanjis,
-        gameOver: availableKanjis.length === 0 // Victoire ?
+        kanjiQueue: newKanjiQueue,
+        missionCompleted: newCompletedKanjis >= prev.missionTarget,
+        gameOver: newCompletedKanjis >= prev.missionTarget || newKanjiQueue.length === 0
       }));
     } else {
-      setGameState(prev => ({ ...prev, totalAttempts: newTotalAttempts }));
+      // Wrong answer or missed kanji
+      const newErrorsUsed = gameState.errorsUsed + 1;
+      
+      setGameState(prev => ({
+        ...prev,
+        score: Math.max(0, prev.score - 50), // Don't go below 0
+        totalAttempts: newTotalAttempts,
+        errorsUsed: newErrorsUsed,
+        kanjiQueue: newKanjiQueue,
+        gameOver: newErrorsUsed >= prev.errorsAllowed || newKanjiQueue.length === 0
+      }));
     }
   };
 
